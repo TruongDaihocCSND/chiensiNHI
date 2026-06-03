@@ -89,7 +89,7 @@
 
   <div id="root"></div>
 
-  <!-- Khởi tạo Firebase Module nguyên bản ngoài Babel để tránh lỗi 'require is not defined' -->
+  <!-- Khởi tạo Firebase Module nguyên bản ngoài Babel để tránh lỗi 'require is not defined' trên GitHub -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -283,7 +283,7 @@
       
       const [user, setUser] = useState(null);
       const [db, setDb] = useState(null);
-      const [appId, setAppId] = useState('chiensinhi-cloud');
+      const [appId, setAppId] = useState('chiensinhi');
 
       // State lưu trữ dữ liệu đồng bộ đám mây
       const [students, setStudents] = useState([]);
@@ -337,20 +337,17 @@
           if (!fb) return;
 
           let config;
-          if (typeof __firebase_config !== 'undefined') {
-            config = JSON.parse(__firebase_config);
-          } else {
-            // Cấu hình dự phòng chuẩn của bạn
-            config = {
-              apiKey: "AIzaSyBqw-x93QgIIGe_AmKpO_BgUL1vJ9RaGrI",
-              authDomain: "chiensinhi.firebaseapp.com",
-              projectId: "chiensinhi",
-              storageBucket: "chiensinhi.firebasestorage.app",
-              messagingSenderId: "57593901975",
-              appId: "1:57593901975:web:df9c359a7b062028634ad2"
-            };
-          }
-          
+          // ƯU TIÊN SỬ DỤNG CẤU HÌNH GỐC CỦA BẠN TRÊN GITHUB ĐỂ TRÁNH LỖI KẾT NỐI CHÉO DỰ ÁN
+          config = {
+            apiKey: "AIzaSyBqw-x93QgIIGe_AmKpO_BgUL1vJ9RaGrI",
+            authDomain: "chiensinhi.firebaseapp.com",
+            projectId: "chiensinhi",
+            storageBucket: "chiensinhi.firebasestorage.app",
+            messagingSenderId: "57593901975",
+            appId: "1:57593901975:web:df9c359a7b062028634ad2"
+          };
+
+          // Nếu có biến môi trường từ hệ thống Sandbox thì lấy làm dự phòng, nếu không có thì mặc định 'chiensinhi'
           const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'chiensinhi';
           setAppId(currentAppId);
 
@@ -361,11 +358,7 @@
 
           // Xác thực nặc danh để phân quyền ghi đọc an toàn trên Firestore
           try {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-              await fb.signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-              await fb.signInAnonymously(auth);
-            }
+            await fb.signInAnonymously(auth);
           } catch (error) {
             console.error("Lỗi xác thực:", error);
           }
@@ -1259,6 +1252,7 @@
                             </label>
                             <input 
                               type="file" 
+                              required={false}
                               accept="image/*" 
                               onChange={handleFileChange}
                               className="text-xs text-slate-500 block w-full file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[10px] file:font-semibold file:bg-green-100 file:text-green-800 hover:file:bg-green-200 cursor-pointer"
