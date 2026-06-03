@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -91,35 +89,51 @@
 
   <div id="root"></div>
 
-  
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-import { getStorage } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-storage.js";
+  <!-- Khởi tạo Firebase Module nguyên bản ngoài Babel để tránh lỗi 'require is not defined' -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBqw-x93QgIIGe_AmKpO_BgUL1vJ9RaGrI",
-  authDomain: "chiensinhi.firebaseapp.com",
-  projectId: "chiensinhi",
-  storageBucket: "chiensinhi.firebasestorage.app",
-  messagingSenderId: "57593901975",
-  appId: "1:57593901975:web:df9c359a7b062028634ad2"
-};
+    // Đưa vào window để sử dụng an toàn trong script React/Babel bên dưới
+    window.fb = {
+      initializeApp,
+      getAuth,
+      signInAnonymously,
+      signInWithCustomToken,
+      onAuthStateChanged,
+      getFirestore,
+      doc,
+      setDoc,
+      getDoc,
+      collection,
+      onSnapshot,
+      deleteDoc
+    };
 
-const app = initializeApp(firebaseConfig);
-window.db = getFirestore(app);
-window.storage = getStorage(app);
-window.FIREBASE_ENABLED = true;
-</script>
+    window.dispatchEvent(new Event('firebase-loaded'));
+  </script>
 
-<script type="text/babel">
+  <!-- Script React sử dụng Babel -->
+  <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // BỘ BIỂU TƯỢNG SVG NỘI BỘ - THAY ĐỔI ĐƯỜNG NÉT HOẶC KÍCH THƯỚC NẾU MUỐN
+    // ============================================================================
+    // BỘ BIỂU TƯỢNG SVG NGUYÊN BẢN 100% CỦA KHÁCH HÀNG
+    // ============================================================================
     const Shield = () => (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-      </svg>
+      <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center">
+        <img
+          src="Logo.png"
+          alt="Logo"
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            // Trường hợp không tìm thấy file Logo.png cục bộ, tự động hiển thị biểu tượng bảo vệ đẹp mắt
+            e.target.style.display = 'none';
+            e.target.parentNode.innerHTML = '<span class="text-2xl">👮</span>';
+          }}
+        />
+      </div>
     );
 
     const Users = () => (
@@ -201,29 +215,19 @@ window.FIREBASE_ENABLED = true;
       </svg>
     );
 
-    /* =========================================================================
-       HƯỚNG DẪN THAY ĐỔI KHO ẢNH & THÔNG TIN CHUNG (APP CONFIGURATION)
-       Bạn có thể thay đổi các đường link ảnh Unsplash dưới đây bằng link ảnh thực tế của bạn.
-       ========================================================================= */
+    // ============================================================================
+    // CẤU HÌNH BAN ĐẦU VÀ DỮ LIỆU MẪU ĐỐI SÁNH
+    // ============================================================================
     const APP_CONFIG = {
       defaultImages: {
-        squad1: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=600', // Ảnh điều lệnh, vượt rào
-        squad2: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=600', // Ảnh sơ cấp cứu dã ngoại
-        squad3: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=600', // Ảnh lớp học chuyên đề phòng chống ma túy
-        squad4: 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?auto=format&fit=crop&q=80&w=600', // Ảnh dã ngoại việt dã
+        squad1: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=600', 
+        squad2: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=600', 
+        squad3: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=600', 
+        squad4: 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?auto=format&fit=crop&q=80&w=600', 
       },
-      // Danh sách các Mã Tiểu đội bảo mật
-      squadCodes: {
-        1: 'TD01',
-        2: 'TD02',
-        3: 'TD03',
-        4: 'TD04',
-        5: 'TD05'
-      },
-      generalCode: 'BCHTONG' // Mã tối cao của Chỉ huy tổng để thêm học viên
+      generalCode: 'BCHTONG' 
     };
 
-    // DỮ LIỆU BAN ĐẦU - BẠN CŨNG CÓ THỂ THAY ĐỔI TÊN HỌC VIÊN HOẶC SĐT/EMAIL MẪU TẠI ĐÂY
     const DEFAULT_STUDENTS = [
       { id: 'CS001', name: 'Nguyễn Minh Quân', squad: 1, avatar: '👶', parentPhone: '0987654321', parentEmail: 'phuhuynh@gmail.com' },
       { id: 'CS002', name: 'Nguyễn Minh Thư', squad: 1, avatar: '👧', parentPhone: '0987654321', parentEmail: 'phuhuynh@gmail.com' },
@@ -270,28 +274,25 @@ window.FIREBASE_ENABLED = true;
       }
     ];
 
+    // ============================================================================
+    // COMPONENT CHÍNH CỦA ỨNG DỤNG
+    // ============================================================================
     function App() {
-      // ĐỒNG BỘ DỮ LIỆU LOCAL STORAGE - GIÚP KHÔNG BỊ MẤT DỮ LIỆU KHI TẢI LẠI TRANG
-      const [students, setStudents] = useState(() => {
-        const local = localStorage.getItem('ca_students');
-        return local ? JSON.parse(local) : DEFAULT_STUDENTS;
-      });
+      // Đọc trực tiếp từ đối tượng window.fb đã khởi động độc lập ngoài Babel
+      const fb = window.fb;
+      
+      const [user, setUser] = useState(null);
+      const [db, setDb] = useState(null);
+      const [appId, setAppId] = useState('chiensinhi-cloud');
 
-      const [reports, setReports] = useState(() => {
-        const local = localStorage.getItem('ca_reports');
-        return local ? JSON.parse(local) : DEFAULT_REPORTS;
-      });
-
-      useEffect(() => {
-        // Firestore migration: disabled localStorage save
-      }, [students]);
-
-      useEffect(() => {
-        // Firestore migration: disabled localStorage save
-      }, [reports]);
+      // State lưu trữ dữ liệu đồng bộ đám mây
+      const [students, setStudents] = useState([]);
+      const [reports, setReports] = useState([]);
+      const [squadCount, setSquadCount] = useState(5);
+      const [isInitializingData, setIsInitializingData] = useState(true);
 
       // Trạng thái điều hướng giao diện chính
-      const [role, setRole] = useState(null); // 'parent', 'commander' (BCH TĐ), 'general' (BCH Tổng)
+      const [role, setRole] = useState(null); 
       const [currentView, setCurrentView] = useState('landing'); 
       const [toast, setToast] = useState(null);
 
@@ -327,6 +328,113 @@ window.FIREBASE_ENABLED = true;
       const [newStudentEmail, setNewStudentEmail] = useState('');
       const [newStudentSquad, setNewStudentSquad] = useState(1);
       const [newStudentAvatar, setNewStudentAvatar] = useState('👶');
+
+      // ----------------------------------------------------------------------
+      // KHỞI TẠO VÀ KẾT NỐI FIREBASE AUTH
+      // ----------------------------------------------------------------------
+      useEffect(() => {
+        const initFirebase = async () => {
+          if (!fb) return;
+
+          let config;
+          if (typeof __firebase_config !== 'undefined') {
+            config = JSON.parse(__firebase_config);
+          } else {
+            // Cấu hình dự phòng chuẩn của bạn
+            config = {
+              apiKey: "AIzaSyBqw-x93QgIIGe_AmKpO_BgUL1vJ9RaGrI",
+              authDomain: "chiensinhi.firebaseapp.com",
+              projectId: "chiensinhi",
+              storageBucket: "chiensinhi.firebasestorage.app",
+              messagingSenderId: "57593901975",
+              appId: "1:57593901975:web:df9c359a7b062028634ad2"
+            };
+          }
+          
+          const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'chiensinhi';
+          setAppId(currentAppId);
+
+          const app = fb.initializeApp(config);
+          const auth = fb.getAuth(app);
+          const firestoreDb = fb.getFirestore(app);
+          setDb(firestoreDb);
+
+          // Xác thực nặc danh để phân quyền ghi đọc an toàn trên Firestore
+          try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+              await fb.signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+              await fb.signInAnonymously(auth);
+            }
+          } catch (error) {
+            console.error("Lỗi xác thực:", error);
+          }
+
+          const unsubscribe = fb.onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser);
+          });
+
+          return () => unsubscribe();
+        };
+
+        initFirebase();
+      }, []);
+
+      // ----------------------------------------------------------------------
+      // ĐỒNG BỘ DỮ LIỆU ĐÁM MÂY REAL-TIME (FIRESTORE)
+      // ----------------------------------------------------------------------
+      useEffect(() => {
+        if (!user || !db || !fb) return;
+
+        const basePath = `artifacts/${appId}/public/data`;
+        const studentsRef = fb.collection(db, basePath, 'students');
+        const reportsRef = fb.collection(db, basePath, 'reports');
+
+        // Đồng bộ danh sách học viên dã chiến
+        const unSubStudents = fb.onSnapshot(studentsRef, (snap) => {
+          if (snap.empty) {
+            // Tự động đẩy dữ liệu mẫu ban đầu nếu cơ sở dữ liệu trên cloud trống rỗng
+            DEFAULT_STUDENTS.forEach(async (s) => {
+              await fb.setDoc(fb.doc(db, basePath, 'students', s.id), s);
+            });
+          } else {
+            const data = snap.docs.map(doc => ({ ...doc.data() }));
+            setStudents(data);
+          }
+        }, (error) => console.error("Lỗi khi đồng bộ học viên từ Cloud:", error));
+
+        // Đồng bộ danh sách nhận xét dã chiến hằng ngày
+        const unSubReports = fb.onSnapshot(reportsRef, (snap) => {
+          if (snap.empty) {
+            // Khởi tạo báo cáo mẫu nếu chưa có dữ liệu đám mây nào
+            DEFAULT_REPORTS.forEach(async (r) => {
+              await fb.setDoc(fb.doc(db, basePath, 'reports', r.id), r);
+            });
+          } else {
+            const data = snap.docs.map(doc => ({ ...doc.data() }));
+            // Sắp xếp báo cáo mới nhất lên đầu
+            setReports(data.sort((a, b) => b.date.localeCompare(a.date)));
+          }
+        }, (error) => console.error("Lỗi khi đồng bộ nhật ký từ Cloud:", error));
+
+        setIsInitializingData(false);
+
+        return () => {
+          unSubStudents();
+          unSubReports();
+        };
+      }, [user, db, appId]);
+
+      // Tự động tạo mã cho các tiểu đội tùy theo số lượng cấu hình hiện có
+      const getSquadCodes = () => {
+        const codes = {};
+        for (let i = 1; i <= squadCount; i++) {
+          codes[i] = `TD${String(i).padStart(2, '0')}`;
+        }
+        return codes;
+      };
+
+      const squadCodes = getSquadCodes();
 
       // Hiện hộp thoại thông báo nổi nhanh (Toast)
       const showToast = (message, type = 'success') => {
@@ -377,14 +485,14 @@ window.FIREBASE_ENABLED = true;
         }
 
         // Quyền hạn: Chỉ Huy Tiểu Đội dã chiến
-        const squadNum = Object.keys(APP_CONFIG.squadCodes).find(key => APP_CONFIG.squadCodes[key] === code);
+        const squadNum = Object.keys(squadCodes).find(key => squadCodes[key] === code);
         if (squadNum) {
           setLoggedInSquad(parseInt(squadNum));
           setRole('commander');
           setCurrentView('commander_dashboard');
           showToast(`Đăng nhập thành công! Quyền hạn: CHỈ HUY TIỂU ĐỘI ${squadNum}`);
         } else {
-          showToast('Mật mã không đúng!', 'error');
+          showToast('Mật mã không đúng hoặc Tiểu đội này chưa được kích hoạt!', 'error');
         }
       };
 
@@ -396,8 +504,8 @@ window.FIREBASE_ENABLED = true;
         }
       };
 
-      // THÊM HOẶC CẬP NHẬT NHẬN XẾT MỚI VÀO SỔ NHẬT KÝ
-      const handleAddNewReport = (e) => {
+      // THÊM HOẶC CẬP NHẬT NHẬN XẾT MỚI VÀO SỔ NHẬT KÝ (LƯU LÊN CLOUD FIRESTORE)
+      const handleAddNewReport = async (e) => {
         e.preventDefault();
         if (!selectedStudent) {
           showToast('Vui lòng chọn một chiến sĩ nhí để ghi nhật ký!', 'error');
@@ -412,7 +520,6 @@ window.FIREBASE_ENABLED = true;
           return;
         }
 
-        // Ưu tiên ảnh tải lên từ thiết bị, sau đó là link mẫu dã chiến
         let finalImageUrl = newImage || APP_CONFIG.defaultImages.squad1;
         if (customImageFile) {
           finalImageUrl = URL.createObjectURL(customImageFile);
@@ -420,59 +527,58 @@ window.FIREBASE_ENABLED = true;
 
         const currentSquadOfStudent = selectedStudent.squad;
 
-        // Chỉ huy tiểu đội chỉ được nhận xét học sinh thuộc tiểu đội mình quản lý
         if (role === 'commander' && currentSquadOfStudent !== loggedInSquad) {
           showToast('Bạn không có thẩm quyền nhận xét học viên tiểu đội khác!', 'error');
           return;
         }
 
-        if (editingReportId) {
-          // CHẾ ĐỘ SỬA ĐỔI BÁO CÁO ĐÃ CÓ
-          const updatedReports = reports.map(r => {
-            if (r.id === editingReportId) {
-              return {
-                ...r,
-                date: newReportDate,
-                activity: newActivity,
-                behaviorRating: newBehaviorRating,
-                physicalRating: newPhysicalRating,
-                comment: newComment,
-                image: finalImageUrl
-              };
-            }
-            return r;
-          });
-          setReports(updatedReports);
-          showToast(`Đã cập nhật thành công nhật ký hoạt động của bé: ${selectedStudent.name}`);
-          setEditingReportId(null);
-        } else {
-          // CHẾ ĐỘ THÊM MỚI BÁO CÁO NGÀY
-          const newReport = {
-            id: `r-${Date.now()}`,
-            studentId: selectedStudent.id,
-            date: newReportDate,
-            activity: newActivity,
-            squad: currentSquadOfStudent,
-            behaviorRating: newBehaviorRating,
-            physicalRating: newPhysicalRating,
-            comment: newComment,
-            image: finalImageUrl
-          };
+        const basePath = `artifacts/${appId}/public/data`;
 
-          setReports([newReport, ...reports]);
-          showToast(`Đã thêm nhận xét mới vào lịch sử của bé: ${selectedStudent.name}`);
+        try {
+          if (editingReportId) {
+            const reportRef = fb.doc(db, basePath, 'reports', editingReportId);
+            await fb.setDoc(reportRef, {
+              date: newReportDate,
+              activity: newActivity,
+              behaviorRating: newBehaviorRating,
+              physicalRating: newPhysicalRating,
+              comment: newComment,
+              image: finalImageUrl
+            }, { merge: true });
+
+            showToast(`Đã đồng bộ cập nhật đám mây thành công cho bé: ${selectedStudent.name}`);
+            setEditingReportId(null);
+          } else {
+            const newId = `r-${Date.now()}`;
+            const reportRef = fb.doc(db, basePath, 'reports', newId);
+            await fb.setDoc(reportRef, {
+              id: newId,
+              studentId: selectedStudent.id,
+              date: newReportDate,
+              activity: newActivity,
+              squad: currentSquadOfStudent,
+              behaviorRating: newBehaviorRating,
+              physicalRating: newPhysicalRating,
+              comment: newComment,
+              image: finalImageUrl
+            });
+
+            showToast(`Đã đồng bộ nhận xét Cloud thành công cho bé: ${selectedStudent.name}`);
+          }
+
+          setNewActivity('');
+          setNewComment('');
+          setNewImage('');
+          setCustomImageFile(null);
+          setSelectedStudent(null);
+        } catch (error) {
+          showToast('Có lỗi xảy ra khi đồng bộ lên dữ liệu đám mây!', 'error');
+          console.error(error);
         }
-
-        // Reset lại form nhập liệu dã chiến
-        setNewActivity('');
-        setNewComment('');
-        setNewImage('');
-        setCustomImageFile(null);
-        setSelectedStudent(null);
       };
 
-      // BCH TỔNG THÊM MỚI HỌC VIÊN & CHỈ ĐỊNH TIỂU ĐỘI TÁC CHIẾN
-      const handleAddStudentByGeneral = (e) => {
+      // BCH TỔNG THÊM MỚI HỌC VIÊN & CHỈ ĐỊNH TIỂU ĐỘI TÁC CHIẾN (LƯU LÊN CLOUD FIRESTORE)
+      const handleAddStudentByGeneral = async (e) => {
         e.preventDefault();
         if (!newStudentName.trim() || !newStudentPhone.trim() || !newStudentEmail.trim()) {
           showToast('Vui lòng điền đầy đủ các trường thông tin học viên nhí!', 'error');
@@ -480,7 +586,7 @@ window.FIREBASE_ENABLED = true;
         }
 
         const newId = `CS-${Math.floor(100 + Math.random() * 900)}`;
-        const newStudent = {
+        const newStudentObj = {
           id: newId,
           name: newStudentName.trim(),
           squad: parseInt(newStudentSquad),
@@ -489,17 +595,24 @@ window.FIREBASE_ENABLED = true;
           parentEmail: newStudentEmail.trim().toLowerCase()
         };
 
-        setStudents([...students, newStudent]);
-        showToast(`Đã thêm thành công Chiến sĩ nhí ${newStudent.name} vào Tiểu đội ${newStudent.squad}!`);
+        try {
+          const basePath = `artifacts/${appId}/public/data`;
+          const studentRef = fb.doc(db, basePath, 'students', newId);
+          await fb.setDoc(studentRef, newStudentObj);
 
-        // Reset biểu mẫu thêm học viên
-        setNewStudentName('');
-        setNewStudentPhone('');
-        setNewStudentEmail('');
-        setNewStudentAvatar('👶');
+          showToast(`Đã đồng bộ học viên nhí ${newStudentObj.name} lên máy chủ Cloud thành công!`);
+
+          setNewStudentName('');
+          setNewStudentPhone('');
+          setNewStudentEmail('');
+          setNewStudentAvatar('👶');
+        } catch (error) {
+          showToast('Có lỗi xảy ra khi lưu học viên!', 'error');
+          console.error(error);
+        }
       };
 
-      // XÓA HỌC VIÊN (CHỈ DÀNH CHO QUYỀN BCH TỔNG)
+      // XÓA HỌC VIÊN (ĐỒNG BỘ FIRESTORE)
       const handleDeleteStudent = (id) => {
         const student = students.find(s => s.id === id);
         setConfirmModal({
@@ -510,25 +623,41 @@ window.FIREBASE_ENABLED = true;
         });
       };
 
-      // THỰC THI THAO TÁC XÓA SAU KHI XÁC NHẬN AN TOÀN TRÊN MODAL
-      const executeDeleteStudent = (id) => {
-        setStudents(students.filter(s => s.id !== id));
-        setReports(reports.filter(r => r.studentId !== id));
-        showToast('Đã xóa dữ liệu chiến sĩ thành công.');
-      };
+      const executeDeleteStudent = async (id) => {
+        try {
+          const basePath = `artifacts/${appId}/public/data`;
+          await fb.deleteDoc(fb.doc(db, basePath, 'students', id));
+          
+          // Xóa đồng thời các báo cáo liên quan
+          const relatedReports = reports.filter(r => r.studentId === id);
+          relatedReports.forEach(async (r) => {
+            await fb.deleteDoc(fb.doc(db, basePath, 'reports', r.id));
+          });
 
-      const executeDeleteReport = (id) => {
-        setReports(reports.filter(r => r.id !== id));
-        if (editingReportId === id) {
-          setEditingReportId(null);
-          setNewActivity('');
-          setNewComment('');
-          setSelectedStudent(null);
+          showToast('Đã xóa vĩnh viễn học viên và nhật ký liên quan trên đám mây.');
+        } catch (error) {
+          showToast('Lỗi khi thực hiện xóa học viên trên máy chủ!', 'error');
         }
-        showToast('Đã xóa nhật ký rèn luyện thành công khỏi lịch sử.');
       };
 
-      // NẠP NGƯỢC DỮ LIỆU ĐỂ SỬA NHẬT KÝ
+      const executeDeleteReport = async (id) => {
+        try {
+          const basePath = `artifacts/${appId}/public/data`;
+          await fb.deleteDoc(fb.doc(db, basePath, 'reports', id));
+
+          if (editingReportId === id) {
+            setEditingReportId(null);
+            setNewActivity('');
+            setNewComment('');
+            setSelectedStudent(null);
+          }
+          showToast('Đã xóa vĩnh viễn nhật ký rèn luyện trên đám mây.');
+        } catch (error) {
+          showToast('Lỗi khi thực hiện xóa nhật ký hằng ngày!', 'error');
+        }
+      };
+
+      // SỬA NHẬT KÝ
       const handleStartEditReport = (report) => {
         const student = students.find(s => s.id === report.studentId);
         setSelectedStudent(student);
@@ -541,12 +670,11 @@ window.FIREBASE_ENABLED = true;
         setNewImage(report.image);
         setCustomImageFile(null);
         
-        // Cuộn màn hình lên vị trí Biểu mẫu chỉnh sửa một cách mượt mà
         window.scrollTo({ top: 250, behavior: 'smooth' });
         showToast(`Đã nạp dữ liệu chỉnh sửa của chiến sĩ ${student ? student.name : ''}`);
       };
 
-      // ĐĂNG XUẤT AN TOÀN
+      // ĐĂNG XUẤT
       const handleLogout = () => {
         setRole(null);
         setCurrentView('landing');
@@ -562,10 +690,32 @@ window.FIREBASE_ENABLED = true;
         showToast('Đã đăng xuất tài khoản an toàn.');
       };
 
+      // TRẠNG THÁI CHỜ KẾT NỐI BAN ĐẦU
+      if (isInitializingData) {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-50">
+             <div className="text-center space-y-4">
+                <div className="w-16 h-16 border-4 border-green-700 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p className="text-green-800 font-extrabold tracking-wider animate-pulse">ĐANG KHỞI TẠO HỆ THỐNG CLOUD FIRESTORE...</p>
+             </div>
+          </div>
+        );
+      }
+
       return (
         <div className="min-h-screen flex flex-col justify-between">
           
-          {/* ===================== THANH ĐẦU TRANG CẢNH SÁT NHÂN DÂN ===================== */}
+          {/* TOAST THÔNG BÁO NỔI CHẠY KHẮP ỨNG DỤNG */}
+          {toast && (
+            <div className={`fixed top-5 right-5 z-50 p-4 rounded-xl shadow-2xl text-xs font-bold animate-fadeIn transition-all flex items-center gap-2 ${
+              toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-slate-900 text-yellow-300'
+            }`}>
+              <span className="text-xl">🚨</span>
+              <span>{toast.message}</span>
+            </div>
+          )}
+
+          {/* ===================== THANH ĐẦU TRANG CẢNH SÁT NHÂN DÂN NGUYÊN BẢN 100% ===================== */}
           <header className="bg-custom-primary-dark text-white border-b-4 border-custom-accent sticky top-0 z-40 shadow-lg">
             <div className="max-w-7xl mx-auto px-4 py-3.5 flex flex-wrap justify-between items-center gap-4">
               
@@ -588,12 +738,12 @@ window.FIREBASE_ENABLED = true;
                 {role && (
                   <div className="flex items-center gap-2 bg-black/35 px-3.5 py-2 rounded-xl border border-green-700 text-xs shadow-sm">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span className="font-semibold text-slate-100">
+                    <span className="font-semibold text-slate-100 text-[11px]">
                       Vai trò: <strong className="text-custom-accent">{role === 'parent' ? 'Phụ Huynh' : role === 'general' ? 'BCH Tổng ⭐️' : `BCH Tiểu Đội ${loggedInSquad}`}</strong>
                     </span>
                     <button 
                       onClick={handleLogout}
-                      className="ml-2 hover:bg-red-700 text-white transition-all bg-red-600/30 hover:scale-105 px-2.5 py-1 rounded-lg flex items-center gap-1 border border-red-500/20"
+                      className="ml-2 hover:bg-red-700 text-white transition-all bg-red-600/30 hover:scale-105 px-2.5 py-1 rounded-lg flex items-center gap-1 border border-red-500/20 text-[10px]"
                     >
                       <LogOut />
                       <span>Thoát</span>
@@ -612,7 +762,7 @@ window.FIREBASE_ENABLED = true;
 
           <main className="max-w-7xl mx-auto px-4 py-6 md:py-8 flex-1 w-full">
             
-            {/* ===================== 1. TRANG CHỦ ĐĂNG NHẬP (LANDING VIEW) ===================== */}
+            {/* ===================== 1. TRANG CHỦ ĐĂNG NHẬP NGUYÊN BẢN 100% ===================== */}
             {currentView === 'landing' && (
               <div className="space-y-8 animate-fadeIn">
                 
@@ -622,24 +772,23 @@ window.FIREBASE_ENABLED = true;
                   <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-green-400/20 rounded-full blur-3xl pointer-events-none"></div>
                   
                   <div className="relative z-10 max-w-2xl space-y-4">
-                    <span className="inline-block bg-custom-accent text-green-950 font-black text-[10px] tracking-widest px-3 py-1.5 rounded-full uppercase shadow-md">
-                      Chương Trình Công An Nhí - Khóa Hè 2026
+                    <span className="inline-block bg-custom-accent text-green-950 font-black text-[10px] tracking-widest px-3 py-1.5 rounded-full uppercase shadow-md flex items-center w-max gap-1">
+                      <span className="w-1.5 h-1.5 bg-green-950 rounded-full animate-ping"></span> Chương Trình Công An Nhí - Khóa Hè 2026
                     </span>
                     <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight leading-none text-custom-accent">
                       Rèn Đức Luyện Tài - Sẵn Sàng Bảo Vệ Tổ Quốc!
                     </h2>
                     <p className="text-xs md:text-sm text-emerald-100 leading-relaxed font-medium">
-                      Chào mừng quý phụ huynh và các đồng chí. Sổ liên lạc giúp cập nhật tiến độ huấn luyện, nếp ăn nếp ở, rèn luyện kỹ năng của các chiến sĩ công an nhí hằng ngày nhanh chóng và minh bạch nhất.
+                      Chào mừng quý phụ huynh và các đồng chí. Sổ liên lạc đám mây tự động đồng bộ kết quả huấn luyện, nếp sinh hoạt nội vụ và kỹ năng của các chiến sĩ công an nhí hằng ngày chuẩn xác và trực quan nhất.
                     </p>
                   </div>
 
-                  {/* NOTE TRÊN CODE: BẠN CÓ THỂ ĐỔI THÔNG TIN MẬU TẠI ĐÂY */}
                   <div className="mt-8 bg-black/35 backdrop-blur-md p-4 rounded-2xl border border-white/10 max-w-sm space-y-2">
                     <div className="text-xs text-custom-accent font-bold uppercase tracking-wider">Mẹo thử nghiệm nhanh hệ thống (Demo):</div>
                     <ul className="text-[11px] text-slate-200 font-medium space-y-1 font-mono">
                       <li>• SĐT phụ huynh (Quản lý 3 con): <strong className="text-white">0987654321</strong></li>
                       <li>• Email phụ huynh (Quản lý 3 con): <strong className="text-white">phuhuynh@gmail.com</strong></li>
-                      <li>• Mật mã Tiểu Đội 1: <strong className="text-white">TD01</strong></li>
+                      <li>• Mật mã các Tiểu Đội: {Object.keys(squadCodes).map(num => <span key={num} className="mr-1"><strong className="text-white">{squadCodes[num]}</strong> ({num})</span>)}</li>
                       <li>• Mật mã Chỉ Huy Tổng: <strong className="text-white">BCHTONG</strong></li>
                     </ul>
                   </div>
@@ -689,7 +838,7 @@ window.FIREBASE_ENABLED = true;
                     </div>
 
                     <div className="mt-6 bg-emerald-50/50 p-3.5 rounded-xl border border-emerald-100 text-[10px] text-emerald-800 leading-relaxed font-semibold">
-                      💡 Mẹo: Hệ thống tự động đồng bộ. Nếu phụ huynh đăng ký từ 2, 3 con trở lên học cùng một khóa học, chỉ cần đăng nhập bằng một SĐT/Email là quản lý được tất cả các con.
+                      💡 Mẹo: Hệ thống tự động đồng bộ đám mây. Nếu phụ huynh đăng ký từ 2, 3 con trở lên học cùng một khóa học, chỉ cần đăng nhập bằng một SĐT/Email là quản lý được tất cả các con.
                     </div>
                   </div>
 
@@ -743,7 +892,7 @@ window.FIREBASE_ENABLED = true;
               </div>
             )}
 
-            {/* ===================== 2. GIAO DIỆN PHỤ HUYNH ĐA CON (PARENT VIEW) ===================== */}
+            {/* ===================== 2. GIAO DIỆN PHỤ HUYNH ĐA CON NGUYÊN BẢN 100% ===================== */}
             {currentView === 'parent_dashboard' && selectedChild && (
               <div className="space-y-6 animate-fadeIn">
                 
@@ -751,7 +900,6 @@ window.FIREBASE_ENABLED = true;
                 <div className="bg-white rounded-3xl p-6 shadow-md border-l-8 border-custom-primary space-y-4">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                      {/* NOTE TRÊN CODE: BẠN CÓ THỂ THAY ĐỔI CỤM TIÊU ĐỀ NÀY */}
                       <h2 className="text-xl font-black text-slate-800">Cổng Thông Tin Nhật Ký Rèn Luyện</h2>
                       <p className="text-xs text-slate-400 font-medium mt-1">
                         Hệ thống phát hiện tài khoản của bạn đang liên kết với <strong className="text-custom-primary font-black">{loggedInParentStudents.length} chiến sĩ nhí</strong> dưới đây. Hãy chọn bé để xem học bạ rèn luyện:
@@ -794,7 +942,6 @@ window.FIREBASE_ENABLED = true;
                   
                   {/* Cột trái: Thẻ ID dã chiến của bé */}
                   <div className="lg:col-span-4">
-                    {/* NOTE TRÊN CODE: THAY ĐỔI MÀU NỀN CỦA CARD TẬP TRUNG TẠI ĐÂY */}
                     <div className="bg-gradient-to-b from-green-900 to-green-950 text-white rounded-3xl p-6 shadow-lg border-b-4 border-custom-accent relative overflow-hidden flex flex-col justify-between h-full min-h-[300px]">
                       <div className="absolute top-0 right-0 -mr-12 -mt-12 w-40 h-40 bg-white/5 rounded-full pointer-events-none"></div>
                       
@@ -827,19 +974,17 @@ window.FIREBASE_ENABLED = true;
                           </div>
                           <div className="flex justify-between">
                             <span className="text-green-200">Kênh tiểu đội bảo mật:</span>
-                            <span className="text-slate-300 font-mono">{APP_CONFIG.squadCodes[selectedChild.squad]}</span>
+                            <span className="text-slate-300 font-mono">{squadCodes[selectedChild.squad] || `TD-${selectedChild.squad}`}</span>
                           </div>
                         </div>
                       </div>
 
-                      {/* CHỮ CHÚ THÍCH/NOTE DƯỚI THẺ - BẠN CÓ THỂ ĐỔI KHẨU HIỆU CỦA KHÓA HỌC TẠI ĐÂY */}
                       <div className="mt-8 bg-black/20 p-4 rounded-2xl border border-white/5 text-[10px] text-emerald-200 italic font-medium leading-relaxed text-center">
                         "Vì danh dự, nghĩa vụ quốc gia. Quyết tâm học tập rèn luyện tốt, không ngại gian khó!"
                       </div>
                     </div>
                   </div>
 
-                  {}
                   {/* Cột phải: Dòng thời gian lịch sử hoạt động ngày */}
                   <div className="lg:col-span-8 space-y-4">
                     <h3 className="text-sm font-black text-slate-700 tracking-widest uppercase flex items-center gap-2">
@@ -928,7 +1073,7 @@ window.FIREBASE_ENABLED = true;
               </div>
             )}
 
-            {/* ===================== 3. GIAO DIỆN CHỈ HUY TIỂU ĐỘI (COMMANDER VIEW) ===================== */}
+            {/* ===================== 3. GIAO DIỆN CHỈ HUY TIỂU ĐỘI NGUYÊN BẢN 100% ===================== */}
             {currentView === 'commander_dashboard' && loggedInSquad && (
               <div className="space-y-6 animate-fadeIn">
                 
@@ -939,7 +1084,7 @@ window.FIREBASE_ENABLED = true;
                       <span className="text-[10px] font-bold uppercase tracking-widest bg-custom-primary text-custom-accent px-2.5 py-1 rounded-md">
                         Chỉ Huy Tác Chiến Tiểu Đội
                       </span>
-                      <span className="text-xs text-slate-400 font-mono font-bold">Mã bảo mật: {APP_CONFIG.squadCodes[loggedInSquad]}</span>
+                      <span className="text-xs text-slate-400 font-mono font-bold">Mã bảo mật: {squadCodes[loggedInSquad]}</span>
                     </div>
                     <h2 className="text-2xl font-black text-slate-800 mt-1">
                       Bảng Điều Hành Tiểu Đội {loggedInSquad}
@@ -973,6 +1118,7 @@ window.FIREBASE_ENABLED = true;
                           return (
                             <button
                               key={student.id}
+                              type="button"
                               onClick={() => {
                                 setSelectedStudent(student);
                                 setNewActivity('');
@@ -1011,7 +1157,6 @@ window.FIREBASE_ENABLED = true;
                     </div>
                   </div>
 
-                  {}
                   {/* BIỂU MẪU VIẾT NHẬN XẾT HOẠT ĐỘNG MỚI */}
                   <div className="lg:col-span-7">
                     {selectedStudent ? (
@@ -1091,7 +1236,6 @@ window.FIREBASE_ENABLED = true;
                         {/* Tải tệp ảnh hoặc chọn link mẫu nhanh */}
                         <div className="grid md:grid-cols-2 gap-4">
                           <div>
-                            {/* NOTE TRÊN CODE: BẠN CÓ THỂ THAY ĐỔI CÁC LINK ẢNH MẪU ĐƯỢC CHỌN SẴN DƯỚI ĐÂY */}
                             <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wide mb-1.5">Ảnh dã ngoại chụp nhanh (Kho mẫu)</label>
                             <select
                               className="w-full p-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-xs font-medium"
@@ -1105,7 +1249,7 @@ window.FIREBASE_ENABLED = true;
                               <option value={APP_CONFIG.defaultImages.squad1}>Huấn luyện điều lệnh đội ngũ 👮‍♂️</option>
                               <option value={APP_CONFIG.defaultImages.squad2}>Tập huấn kỹ năng dã ngoại sơ cứu 🩹</option>
                               <option value={APP_CONFIG.defaultImages.squad3}>Lớp học chuyên đề an ninh xã hội 🏫</option>
-                              <option value={APP_CONFIG.defaultImages.squad4}>Hội thao việt dã vượt chướng ngại vật 🏃‍♂️</option>
+                              <option value={APP_CONFIG.defaultImages.squad4}>Hội thao việt dã vượt chướng ngại vật running👮‍♂️</option>
                             </select>
                           </div>
 
@@ -1120,7 +1264,7 @@ window.FIREBASE_ENABLED = true;
                               className="text-xs text-slate-500 block w-full file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[10px] file:font-semibold file:bg-green-100 file:text-green-800 hover:file:bg-green-200 cursor-pointer"
                             />
                             {customImageFile && (
-                              <p className="text-[9px] text-emerald-600 mt-1">✓ Đã nạp file: {customImageFile.name}</p>
+                              <p className="text-[9px] text-emerald-600 mt-1 font-semibold">✓ Đã nạp file cục bộ: {customImageFile.name}</p>
                             )}
                           </div>
                         </div>
@@ -1144,7 +1288,7 @@ window.FIREBASE_ENABLED = true;
                             className="flex-1 bg-custom-primary hover:bg-custom-primary-light text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs"
                           >
                             <CheckCircle className="w-4 h-4" />
-                            <span>{editingReportId ? 'Lưu Cập Nhật' : 'Thêm Nhận Xét Mới'}</span>
+                            <span>{editingReportId ? 'Lưu Cập Nhật Đám Mây' : 'Đồng Bộ Nhận Xét Mới'}</span>
                           </button>
                           <button
                             type="button"
@@ -1178,7 +1322,6 @@ window.FIREBASE_ENABLED = true;
 
                 </div>
 
-                {}
                 {/* DANH SÁCH NHẬT KÝ ĐÃ GHI CỦA TIỂU ĐỘI - CHO PHÉP CHỈNH SỬA VÀ XÓA TẠI CHỖ */}
                 <div className="bg-white rounded-2xl shadow p-5 border border-slate-100 space-y-4 mt-6">
                   <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5 uppercase">
@@ -1231,7 +1374,6 @@ window.FIREBASE_ENABLED = true;
                                 </div>
                               </div>
 
-                              {/* Tác vụ chỉnh sửa / xóa dã chiến */}
                               <div className="flex gap-2 pt-1.5 border-t border-slate-200/30">
                                 <button
                                   type="button"
@@ -1266,7 +1408,7 @@ window.FIREBASE_ENABLED = true;
               </div>
             )}
 
-            {/* ===================== 4. GIAO DIỆN CHỈ HUY TỔNG (GENERAL SUPERIOR VIEW) ===================== */}
+            {/* ===================== 4. GIAO DIỆN CHỈ HUY TỔNG NGUYÊN BẢN 100% ===================== */}
             {currentView === 'general_dashboard' && (
               <div className="space-y-6 animate-fadeIn">
                 
@@ -1276,22 +1418,58 @@ window.FIREBASE_ENABLED = true;
                     <span className="text-[10px] bg-custom-accent text-green-950 font-black px-2.5 py-1 rounded uppercase tracking-wider">
                       Cơ Quan Chỉ Huy Tối Cao (BCH Tổng)
                     </span>
-                    {/* NOTE TRÊN CODE: BẠN CÓ THỂ ĐỔI TIÊU ĐỀ SECTION NÀY */}
                     <h2 className="text-2xl font-black mt-1 text-custom-accent">
                       Bảng Điều Hành Toàn Khóa Huấn Luyện
                     </h2>
                     <p className="text-xs text-emerald-200 mt-1 font-medium">
-                      Xem danh sách toàn bộ học viên, thêm học viên mới, chỉ định tiểu đội tác chiến và giám sát toàn bộ báo cáo rèn luyện dã ngoại.
+                      Xem danh sách toàn bộ học viên, thêm học viên mới, chỉ định tiểu đội tác chiến và giám sát toàn bộ báo cáo rèn luyện dã ngoại hằng ngày trên máy chủ Đám mây.
                     </p>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <span className="bg-black/30 px-3.5 py-2 rounded-xl text-xs border border-white/5">
                       Tổng số: <strong className="text-custom-accent">{students.length} Học viên</strong>
                     </span>
                     <span className="bg-black/30 px-3.5 py-2 rounded-xl text-xs border border-white/5">
                       Báo cáo: <strong className="text-custom-accent">{reports.length} Nhật ký</strong>
                     </span>
+                    <span className="bg-black/30 px-3.5 py-2 rounded-xl text-xs border border-white/5">
+                      Quy mô: <strong className="text-custom-accent">{squadCount} Tiểu đội</strong>
+                    </span>
+                  </div>
+                </div>
+
+                {/* KHU VỰC THIẾT LẬP SỐ LƯỢNG TIỂU ĐỘI CHO BCH TỔNG KHI HỌC VIÊN ĐÔNG */}
+                <div className="bg-white rounded-2xl p-5 shadow border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                  <div className="space-y-1 text-center md:text-left">
+                    <span className="inline-block bg-green-100 text-green-800 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                      Đặc quyền BCH Tổng
+                    </span>
+                    <h3 className="text-sm font-black text-slate-800">Cấu hình Quy mô Đơn vị Huấn luyện</h3>
+                    <p className="text-xs text-slate-400">Bạn có thể điều chỉnh linh hoạt số lượng tiểu đội tùy thuộc vào lượng học viên nhập ngũ thực tế hằng năm.</p>
+                  </div>
+
+                  <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-200">
+                    <span className="text-xs font-bold text-slate-600 px-2">Số Tiểu Đội Biên Chế:</span>
+                    <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-inner">
+                      <button 
+                        type="button" 
+                        onClick={() => setSquadCount(prev => Math.max(1, prev - 1))}
+                        className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-xs transition-colors flex items-center justify-center"
+                      >
+                        -
+                      </button>
+                      <span className="w-10 text-center font-black text-sm text-custom-primary-dark">
+                        {squadCount}
+                      </span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSquadCount(prev => prev + 1)}
+                        className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-xs transition-colors flex items-center justify-center"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1311,6 +1489,7 @@ window.FIREBASE_ENABLED = true;
                         <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">Họ và Tên Chiến Sĩ Nhí</label>
                         <input
                           type="text"
+                          required
                           placeholder="Ví dụ: Nguyễn Hữu Đạt..."
                           value={newStudentName}
                           onChange={(e) => setNewStudentName(e.target.value)}
@@ -1334,19 +1513,17 @@ window.FIREBASE_ENABLED = true;
                           </select>
                         </div>
 
-                        {/* Chỉ định tiểu đội rèn luyện */}
+                        {/* Chỉ định tiểu đội rèn luyện - Động dựa trên quy mô số lượng tiểu đội */}
                         <div>
                           <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">Tiểu Đội Chỉ Định</label>
                           <select
                             value={newStudentSquad}
-                            onChange={(e) => setNewStudentSquad(e.target.value)}
+                            onChange={(e) => setNewStudentSquad(parseInt(e.target.value))}
                             className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800"
                           >
-                            <option value="1">Tiểu Đội 1 (Mã: TD01)</option>
-                            <option value="2">Tiểu Đội 2 (Mã: TD02)</option>
-                            <option value="3">Tiểu Đội 3 (Mã: TD03)</option>
-                            <option value="4">Tiểu Đội 4 (Mã: TD04)</option>
-                            <option value="5">Tiểu Đội 5 (Mã: TD05)</option>
+                            {Array.from({ length: squadCount }, (_, i) => i + 1).map((num) => (
+                              <option key={num} value={num}>Tiểu Đội {num} ({squadCodes[num] || `TD-${num}`})</option>
+                            ))}
                           </select>
                         </div>
                       </div>
@@ -1356,6 +1533,7 @@ window.FIREBASE_ENABLED = true;
                         <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">Số điện thoại Phụ huynh</label>
                         <input
                           type="text"
+                          required
                           placeholder="Ví dụ: 0987654321..."
                           value={newStudentPhone}
                           onChange={(e) => setNewStudentPhone(e.target.value)}
@@ -1368,6 +1546,7 @@ window.FIREBASE_ENABLED = true;
                         <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">Email Phụ huynh</label>
                         <input
                           type="email"
+                          required
                           placeholder="Ví dụ: phuhuynh@gmail.com..."
                           value={newStudentEmail}
                           onChange={(e) => setNewStudentEmail(e.target.value)}
@@ -1380,13 +1559,12 @@ window.FIREBASE_ENABLED = true;
                         className="w-full bg-custom-primary hover:bg-custom-primary-light text-white font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider shadow transition-all flex items-center justify-center gap-1.5"
                       >
                         <Plus />
-                        <span>Thêm Chiến Sĩ Mới</span>
+                        <span>Đồng Bộ Học Viên Mới</span>
                       </button>
 
                     </form>
                   </div>
 
-                  {}
                   {/* DANH SÁCH HỌC VIÊN TOÀN KHÓA HỌC */}
                   <div className="lg:col-span-8">
                     <div className="bg-white rounded-2xl shadow p-5 border border-slate-100 space-y-4">
@@ -1442,12 +1620,12 @@ window.FIREBASE_ENABLED = true;
 
                 </div>
 
-                {/* GIÁM SÁT TOÀN BỘ BÁO CÁO CỦA CẢ 5 TIỂU ĐỘI */}
+                {/* GIÁM SÁT TOÀN BỘ BÁO CÁO CỦA CÁC TIỂU ĐỘI */}
                 <div className="bg-white rounded-2xl shadow p-5 border border-slate-100 space-y-4">
                   <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
                     <h3 className="text-xs font-black text-slate-700 tracking-wider uppercase flex items-center gap-1.5">
                       <ImageIcon className="text-custom-primary" />
-                      <span>Giám Sát Báo Cáo Của Toàn Bộ 5 Tiểu Đội</span>
+                      <span>Giám Sát Báo Cáo Của Toàn Bộ {squadCount} Tiểu Đội</span>
                     </h3>
                     <span className="text-[10px] font-bold text-custom-primary">Giám sát, sửa đổi hoặc xóa mọi báo cáo dã chiến</span>
                   </div>
@@ -1476,7 +1654,7 @@ window.FIREBASE_ENABLED = true;
                             </div>
 
                             {report.image && (
-                              <img src={report.image} alt="Báo cáo" className="w-full h-24 object-cover rounded-lg border border-slate-300 cursor-zoom-in" onClick={() => setZoomedImage({ url: report.image, title: `Báo cáo giám sát TĐ ${report.squad}` })} />
+                              <img src={report.image} alt="Báo cáo" className="w-full h-24 object-cover rounded-lg border border-slate-300 cursor-zoom-in animate-fadeIn" onClick={() => setZoomedImage({ url: report.image, title: `Báo cáo giám sát TĐ ${report.squad}` })} />
                             )}
 
                             <div className="pt-2 border-t border-slate-200/50 flex justify-between items-center text-[9px] font-bold">
@@ -1515,8 +1693,7 @@ window.FIREBASE_ENABLED = true;
 
           </main>
 
-          {/* ===================== CHÂN TRANG THƯƠNG HIỆU ===================== */}
-          {/* NOTE TRÊN CODE: THAY ĐỔI CÁC THÔNG TIN LIÊN HỆ DỄ DÀNG Ở ĐÂY */}
+          {/* ===================== CHÂN TRANG THƯƠNG HIỆU NGUYÊN BẢN 100% ===================== */}
           <footer className="bg-slate-900 text-slate-400 text-xs py-8 mt-16 border-t-4 border-custom-primary-dark">
             <div className="max-w-7xl mx-auto px-4 grid md:grid-cols-3 gap-8">
               <div className="space-y-3">
@@ -1531,7 +1708,7 @@ window.FIREBASE_ENABLED = true;
               <div className="space-y-2 text-[11px] font-semibold">
                 <h4 className="text-white font-bold text-sm uppercase tracking-wide">Đường Dây Nóng Hỗ Trợ</h4>
                 <div className="space-y-1 text-slate-500">
-                  <p>📞 Số điện thoại liên hệ: 091 109 9798 (Hoài Nam)</p>
+                  <p>📞 Số điện thoại liên hệ: 0911 099 798 (Hoài Nam)</p>
                   <p>📧 Email liên hệ: contact@dhcsnd.bocongan.gov.vn</p>
                   <p>📍 Địa điểm: 36 Nguyễn Hữu Thọ, Phường Tân Hưng, TP.HCM, Việt Nam</p>
                 </div>
@@ -1544,18 +1721,18 @@ window.FIREBASE_ENABLED = true;
               </div>
             </div>
             <div className="max-w-7xl mx-auto px-4 mt-8 pt-6 border-t border-slate-800 text-center text-slate-600 font-bold">
-              <p>© 2026 Chương Trình Chiến Sĩ Công An Nhí. Phát triển vì sự trưởng thành toàn diện của trẻ em Việt Nam.</p>
+              <p>© 2026 Chương Trình Chiến Sĩ Công An Nhí. Phát triển vì sự trưởng thành toàn diện của trẻ em Việt Nam. Tích hợp Cloud Firestore.</p>
             </div>
           </footer>
 
-          {/* ===================== DIALOG XÁC NHẬN AN TOÀN TRƯỚC KHI XÓA ===================== */}
+          {/* ===================== DIALOG XÁC NHẬN AN TOÀN TRƯỚC KHI XÓA NGUYÊN BẢN 100% ===================== */}
           {confirmModal.isOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 animate-fadeIn">
               <div className="absolute inset-0 cursor-zoom-out" onClick={() => setConfirmModal({ isOpen: false, type: '', id: '', message: '' })}></div>
               
               <div className="relative bg-white rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl border border-slate-200 z-10 animate-scaleIn">
                 <div className="flex items-center gap-2.5 text-red-600 border-b border-slate-100 pb-3">
-                  <Shield />
+                  <span className="text-2xl">⚠️</span>
                   <h4 className="font-extrabold text-sm uppercase tracking-wider">Cảnh Báo Hệ Thống</h4>
                 </div>
                 
@@ -1588,7 +1765,7 @@ window.FIREBASE_ENABLED = true;
             </div>
           )}
 
-          {/* ===================== MODAL PHÓNG TO VÀ DOWNLOAD TẢI ẢNH ===================== */}
+          {/* ===================== MODAL PHÓNG TO VÀ DOWNLOAD TẢI ẢNH NGUYÊN BẢN 100% ===================== */}
           {zoomedImage && (
             <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-4 animate-fadeIn">
               <div className="absolute inset-0 cursor-zoom-out" onClick={() => setZoomedImage(null)}></div>
@@ -1644,10 +1821,44 @@ window.FIREBASE_ENABLED = true;
       );
     }
 
-    // Gắn kết ứng dụng React dã chiến vào thẻ Root
+    // ============================================================================
+    // BỘ NẠP MODULE FIREBASE (APP LOADER)
+    // Giúp tải Firebase dạng Module an toàn trong môi trường Babel / Trình duyệt
+    // ============================================================================
+    function AppLoader() {
+      const [firebaseLoaded, setFirebaseLoaded] = React.useState(!!window.fb);
+      const [loadError, setLoadError] = React.useState(null);
+
+      React.useEffect(() => {
+        const handleLoad = () => {
+          setFirebaseLoaded(true);
+        };
+
+        if (window.fb) {
+          handleLoad();
+        } else {
+          window.addEventListener('firebase-loaded', handleLoad);
+          return () => window.removeEventListener('firebase-loaded', handleLoad);
+        }
+      }, []);
+
+      if (loadError) return <div className="text-red-500 p-10 text-center font-bold">Lỗi tải hệ thống Firebase: {loadError}</div>;
+      if (!firebaseLoaded) return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+           <div className="text-center space-y-4">
+              <div className="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <p className="text-green-800 font-extrabold tracking-wider animate-pulse">ĐANG KHỞI TẠO MÁY CHỦ TRUYỀN TẢI CLOUD...</p>
+           </div>
+        </div>
+      );
+
+      return <App />;
+    }
+
+    // Khởi chạy ứng dụng React
     const container = document.getElementById('root');
     const root = ReactDOM.createRoot(container);
-    root.render(<App />);
+    root.render(<AppLoader />);
 
   </script>
 </body>
