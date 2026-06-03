@@ -358,9 +358,8 @@
           }
 
           if (fileId) {
-            // Trả về định dạng hiển thị trực tiếp vượt rào iframe của Google Drive (Direct Link Bypass)
-            return `https://drive.google.com/uc?export=view&id=${fileId}`;
-          }
+  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w2000`;
+}
         }
         return trimmedUrl;
       };
