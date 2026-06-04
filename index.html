@@ -775,32 +775,41 @@
 
       const handleAddStudentByGeneral = async (e) => {
         e.preventDefault();
-        if (!newStudentName.trim() || !newStudentPhoneState.trim() || !newStudentEmail.trim()) {
-          showToast('Vui lòng điền đầy đủ thông tin học sinh!', 'error');
+        if (!newStudentName.trim()) {
+          showToast('Vui lòng điền Họ và tên chiến sĩ nhí!', 'error');
           return;
         }
 
         const phoneInput = newStudentPhoneState.trim();
         const emailInput = newStudentEmail.trim().toLowerCase();
+
+        // CHỈNH SỬA: Chỉ yêu cầu nhập ít nhất SĐT hoặc Email
+        if (!phoneInput && !emailInput) {
+          showToast('Vui lòng điền ít nhất Số điện thoại hoặc Email phụ huynh!', 'error');
+          return;
+        }
+
         const newId = `CS${Math.floor(100 + Math.random() * 900)}`;
 
-        // LOGIC MỚI: Kiểm tra xem có học sinh nào trước đó có cùng SĐT và Email không
-        const existingSibling = students.find(
-          s => s.parentPhone === phoneInput && s.parentEmail.toLowerCase() === emailInput
-        );
+        // LOGIC CẬP NHẬT: Tìm kiếm anh/chị/em chỉ dựa trên trường thông tin có dữ liệu
+        const existingSibling = students.find(s => {
+          const matchPhone = phoneInput && s.parentPhone && s.parentPhone === phoneInput;
+          const matchEmail = emailInput && s.parentEmail && s.parentEmail.toLowerCase() === emailInput;
+          return matchPhone || matchEmail;
+        });
 
         // Nếu có học sinh anh/chị em, dùng lại mật khẩu của người đó. Nếu không thì tạo mới.
         const finalPassword = existingSibling && existingSibling.parentPassword
           ? existingSibling.parentPassword
-          : createParentPasswordByLogic(phoneInput, newId);
+          : createParentPasswordByLogic(phoneInput || '1234', newId);
 
         const newStudentObj = {
           id: newId,
           name: newStudentName.trim(),
           squad: parseInt(newStudentSquad),
           avatar: newStudentAvatar,
-          parentPhone: phoneInput,
-          parentEmail: emailInput,
+          parentPhone: phoneInput, // Có thể để trống nếu không nhập
+          parentEmail: emailInput,   // Có thể để trống nếu không nhập
           parentPassword: finalPassword
         };
 
@@ -1561,9 +1570,7 @@
                               )}
                             </h3>
                           </div>
-                          <span className={`font-bold text-[10px] px-2.5 py-1 rounded-lg ${
-                            selectedStudent.id === 'COMMON' ? 'bg-amber-100 text-amber-800' : 'bg-yellow-100 text-yellow-950'
-                          }`}>
+                          <span className="font-bold text-[10px] px-2.5 py-1 rounded-lg bg-yellow-100 text-yellow-950">
                             Mã: {selectedStudent.id}
                           </span>
                         </div>
@@ -1571,7 +1578,7 @@
                         {/* Hướng dẫn hiển thị */}
                         {selectedStudent.id === 'COMMON' && (
                           <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-[10px] text-amber-800 font-semibold leading-relaxed">
-                            💡 <strong>Tin đăng chung:</strong> Mọi phụ huynh có con em thuộc <strong>Tiểu Đội {loggedInSquad}</strong> đều sẽ nhìn thấy nội dung nhận xét và hình ảnh dã dã chiến này trên học bạ của con họ. Rất thích hợp để chia sẻ ảnh chụp tập thể!
+                            💡 <strong>Tin đăng chung:</strong> Mọi phụ huynh có con em thuộc <strong>Tiểu Đội {loggedInSquad}</strong> đều sẽ nhìn thấy nội dung nhận xét và hình ảnh dã chiến này trên học bạ của con họ. Rất thích hợp để chia sẻ ảnh chụp tập thể!
                           </div>
                         )}
 
@@ -2049,8 +2056,7 @@
                         <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Số điện thoại Phụ huynh</label>
                         <input
                           type="text"
-                          required
-                          placeholder="Ví dụ: 0987654321..."
+                          placeholder="Ví dụ: 0987654321... (Không bắt buộc)"
                           value={newStudentPhoneState}
                           onChange={(e) => setNewStudentPhone(e.target.value)}
                           className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800"
@@ -2062,8 +2068,7 @@
                         <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Email Phụ huynh</label>
                         <input
                           type="email"
-                          required
-                          placeholder="Ví dụ: phuhuynh@gmail.com..."
+                          placeholder="Ví dụ: phuhuynh@gmail.com... (Không bắt buộc)"
                           value={newStudentEmail}
                           onChange={(e) => setNewStudentEmail(e.target.value)}
                           className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800"
@@ -2077,15 +2082,22 @@
                             const currentPhone = newStudentPhoneState.trim();
                             const currentEmail = newStudentEmail.trim().toLowerCase();
                             
-                            const sibling = students.find(
-                              s => s.parentPhone === currentPhone && s.parentEmail.toLowerCase() === currentEmail
-                            );
+                            if (!currentPhone && !currentEmail) {
+                              return 'Nhập SĐT hoặc Email để xem thử';
+                            }
+
+                            // Dò tìm tài khoản anh/chị/em dựa vào một trong hai trường có dữ liệu
+                            const sibling = students.find(s => {
+                              const matchPhone = currentPhone && s.parentPhone && s.parentPhone === currentPhone;
+                              const matchEmail = currentEmail && s.parentEmail && s.parentEmail.toLowerCase() === currentEmail;
+                              return matchPhone || matchEmail;
+                            });
 
                             if (sibling && sibling.parentPassword) {
                               return `${sibling.parentPassword} (Dùng chung với bé ${sibling.name})`;
                             }
                             
-                            return currentPhone ? createParentPasswordByLogic(currentPhone, '(Mã số ID)') : 'Nhập SĐT để xem thử';
+                            return createParentPasswordByLogic(currentPhone || '1234', '(Mã số ID)');
                           })()}
                         </div>
                       </div>
@@ -2137,10 +2149,10 @@
                                     </span>
                                   </td>
                                   <td className="p-3 text-[10px] text-slate-500 space-y-0.5">
-                                    <div>📞 {student.parentPhone}</div>
-                                    <div className="text-slate-400 break-all">{student.parentEmail}</div>
+                                    {student.parentPhone && <div>📞 {student.parentPhone}</div>}
+                                    {student.parentEmail && <div className="text-slate-400 break-all">📧 {student.parentEmail}</div>}
                                     <div className="mt-1 font-mono font-bold text-custom-primary bg-emerald-50/70 px-1.5 py-0.5 rounded w-max border border-emerald-100 text-[8px] md:text-[9px]">
-                                      🔑 MK: {student.parentPassword || createParentPasswordByLogic(student.parentPhone, student.id)}
+                                      🔑 MK: {student.parentPassword || createParentPasswordByLogic(student.parentPhone || '1234', student.id)}
                                     </div>
                                   </td>
                                   <td className="p-3 text-center">
@@ -2351,7 +2363,7 @@
                       onClick={() => setZoomedImage(null)}
                       className="flex-1 sm:flex-initial bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl text-xs font-extrabold transition-colors border border-slate-700 active-scale"
                     >
-                      Dóng
+                      Đóng
                     </button>
                   </div>
                 </div>
