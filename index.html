@@ -314,6 +314,17 @@
         physicalRating: 'Khá',
         comment: 'Chiến sĩ Bách hăng hái phát biểu trong giờ học chuyên đề phòng chống ma túy. Tinh thần đồng đội rất cao.',
         image: APP_CONFIG.defaultImages.squad3,
+      },
+      {
+        id: 'r-common-1',
+        studentId: 'COMMON', // ID đặc biệt dành cho Nhận xét Chung toàn Tiểu Đội
+        date: '2026-06-01',
+        activity: 'Hoạt động dã ngoại chung của Tiểu Đội',
+        squad: 1,
+        behaviorRating: 'Tốt',
+        physicalRating: 'Tốt',
+        comment: 'Hôm nay toàn Tiểu Đội 1 đã hoàn thành xuất sắc thử thách hành quân dã ngoại 5km băng rừng. Tinh thần kỷ luật tập thể rất cao, các chiến sĩ biết đùm bọc, giúp đỡ nhau lúc mệt mỏi.',
+        image: APP_CONFIG.defaultImages.squad4,
       }
     ];
 
@@ -344,7 +355,7 @@
       // Trạng thái điều hướng giao diện chính
       const [role, setRole] = useState(null); 
       const [currentView, setCurrentView] = useState('landing'); 
-      const [loginTab, setLoginTab] = useState('parent'); // Switch Tab cho Mobile đăng nhập cực gọn
+      const [loginTab, setLoginTab] = useState('parent'); // Switch Tab cho Mobile
       const [toast, setToast] = useState(null);
 
       // Quản lý việc Chỉnh sửa & Xóa nhật ký hoạt động rèn luyện
@@ -366,7 +377,7 @@
       const [loggedInSquad, setLoggedInSquad] = useState(null);
 
       // Biểu mẫu viết nhận xét, đánh giá rèn luyện
-      const [selectedStudent, setSelectedStudent] = useState(null);
+      const [selectedStudent, setSelectedStudent] = useState(null); // Có thể là student object hoặc object đặc biệt { id: 'COMMON', name: 'Cả Tiểu Đội' }
       const [newReportDate, setNewReportDate] = useState(new Date().toISOString().split('T')[0]);
       const [newActivity, setNewActivity] = useState('');
       const [newBehaviorRating, setNewBehaviorRating] = useState('Tốt');
@@ -691,7 +702,7 @@
       const handleAddNewReport = async (e) => {
         e.preventDefault();
         if (!selectedStudent) {
-          showToast('Vui lòng chọn một chiến sĩ nhí!', 'error');
+          showToast('Vui lòng chọn một chiến sĩ nhí hoặc Nhận xét chung toàn tiểu đội!', 'error');
           return;
         }
         if (!newActivity.trim()) {
@@ -709,9 +720,10 @@
           processedImageUrl = APP_CONFIG.defaultImages.squad1;
         }
 
-        const currentSquadOfStudent = selectedStudent.squad;
+        // Đơn vị chỉ định để gắn vào báo cáo
+        const targetSquad = role === 'commander' ? loggedInSquad : selectedStudent.squad;
 
-        if (role === 'commander' && currentSquadOfStudent !== loggedInSquad) {
+        if (role === 'commander' && selectedStudent.id !== 'COMMON' && selectedStudent.squad !== loggedInSquad) {
           showToast('Bạn không có thẩm quyền đối với học viên tiểu đội khác!', 'error');
           return;
         }
@@ -730,24 +742,24 @@
               image: processedImageUrl
             }, { merge: true });
 
-            showToast(`Đã đồng bộ cập nhật cho bé: ${selectedStudent.name}`);
+            showToast(`Đã đồng bộ cập nhật thành công!`);
             setEditingReportId(null);
           } else {
             const newId = `r-${Date.now()}`;
             const reportRef = fb.doc(db, basePath, 'reports', newId);
             await fb.setDoc(reportRef, {
               id: newId,
-              studentId: selectedStudent.id,
+              studentId: selectedStudent.id, // Sẽ lưu là 'COMMON' hoặc mã học viên 'CSxxx'
               date: newReportDate,
               activity: newActivity,
-              squad: currentSquadOfStudent,
+              squad: targetSquad,
               behaviorRating: newBehaviorRating,
               physicalRating: newPhysicalRating,
               comment: newComment,
               image: processedImageUrl
             });
 
-            showToast(`Đã lưu nhận xét cho bé: ${selectedStudent.name}`);
+            showToast(`Đã lưu nhận xét thành công!`);
           }
 
           setNewActivity('');
@@ -842,7 +854,13 @@
       };
 
       const handleStartEditReport = (report) => {
-        const student = students.find(s => s.id === report.studentId);
+        let student = null;
+        if (report.studentId === 'COMMON') {
+          student = { id: 'COMMON', name: 'Nhận xét Chung Toàn Tiểu Đội', squad: report.squad };
+        } else {
+          student = students.find(s => s.id === report.studentId);
+        }
+        
         setSelectedStudent(student);
         setEditingReportId(report.id);
         setNewReportDate(report.date);
@@ -959,7 +977,7 @@
                       Rèn Đức Luyện Tài - Sẵn Sàng Học Tập!
                     </h2>
                     <p className="text-xs md:text-sm text-emerald-100/90 leading-relaxed font-medium">
-                      Chào mừng quý phụ huynh và các đồng chí. Hệ thống hỗ trợ theo dõi nếp sống kỷ luật quân đội, cập nhật nhận xét và kết nối lưu trữ hình ảnh thông qua Google Drive bảo mật.
+                      Chào mừng quý phụ huynh và các đồng chí. Hệ thống hỗ trợ theo dõi nhận xét dã chiến chi tiết của từng bé song song với hoạt động chung dã ngoại toàn tiểu đội tiện lợi.
                     </p>
                   </div>
 
@@ -1056,7 +1074,7 @@
                                 type="password"
                                 value={parentPasswordInput}
                                 onChange={(e) => setParentPasswordInput(e.target.value)}
-                                placeholder="Mật Khẩu"
+                                placeholder="Mẫu: PH + 4 số cuối SĐT + Mã ID học sinh"
                                 className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-600 focus:bg-white text-xs font-semibold text-slate-800 transition-all"
                               />
                             </div>
@@ -1066,7 +1084,7 @@
                             type="submit"
                             className="w-full bg-custom-primary hover:bg-custom-primary-light text-white font-extrabold py-3 px-4 rounded-xl shadow-md flex items-center justify-center gap-1.5 text-xs uppercase tracking-wider transition-all duration-300 hover:shadow-green-100 hover:scale-[1.01] active-scale"
                           >
-                            <span>Mở Sổ Liên Lạc Điện Tử</span>
+                            <span>Truy Cập Sổ Liên Lạc Điện Tử</span>
                             <ChevronRight />
                           </button>
                         </form>
@@ -1088,7 +1106,7 @@
                           </div>
                           <div>
                             <h3 className="text-base md:text-lg font-extrabold text-slate-800">Cổng Ban Chỉ Huy & Phụ Trách</h3>
-                            <p className="text-[11px] md:text-xs text-slate-400 font-medium">Ghi chép hoạt động dã chiến, tải ảnh dã ngoại trực tiếp và viết nhận xét.</p>
+                            <p className="text-[11px] md:text-xs text-slate-400 font-medium">Ghi chép hoạt động dã chiến, tải ảnh dã ngoại trực tiếp và viết nhận xét chung/cá nhân.</p>
                           </div>
                         </div>
                         <hr className="border-slate-100" />
@@ -1131,7 +1149,7 @@
                             type="submit"
                             className="w-full bg-custom-secondary hover:bg-custom-secondary-hover text-white font-extrabold py-3 px-4 rounded-xl shadow-md flex items-center justify-center gap-1.5 text-xs uppercase tracking-wider transition-all duration-300 hover:shadow-orange-100 hover:scale-[1.01] active-scale"
                           >
-                            <span>Mở Phòng Điều Hành</span>
+                            <span>Truy Cập Trang Điều Hành</span>
                             <ChevronRight />
                           </button>
                         </form>
@@ -1166,7 +1184,7 @@
                     </div>
                   </div>
 
-                  {/* Chọn nhanh con em mượt mà (Ưu tiên chạm trượt ngang mượt mà trên Mobile) */}
+                  {/* Chọn nhanh con em mượt mà */}
                   <div className="flex flex-row overflow-x-auto gap-2 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
                     {loggedInParentStudents.map((child) => {
                       const isSelected = selectedChild.id === child.id;
@@ -1245,87 +1263,120 @@
                     </div>
                   </div>
 
-                  {/* Cột phải: Dòng thời gian lịch sử hoạt động ngày */}
+                  {/* Cột phải: Dòng thời gian lịch sử hoạt động ngày (Bao gồm cả nhận xét chung của Tiểu Đội và cá nhân) */}
                   <div className="lg:col-span-8 space-y-4">
                     <h3 className="text-xs md:text-sm font-black text-slate-700 tracking-wider uppercase flex items-center gap-2">
                       <BookOpen />
-                      <span>Nhật Ký Học Học Tập ({reports.filter(r => r.studentId === selectedChild.id).length} ngày rèn luyện)</span>
+                      <span>Nhật Ký Học Học Tập & Sinh Hoạt Tiểu Đội</span>
                     </h3>
 
-                    {reports.filter(r => r.studentId === selectedChild.id).length === 0 ? (
-                      <div className="bg-white rounded-2xl p-8 md:p-12 shadow text-center border border-slate-100 space-y-3">
-                        <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center text-2xl mx-auto">📭</div>
-                        <div>
-                          <h4 className="font-bold text-slate-800 text-xs md:text-sm">Chưa có nhận xét ngày!</h4>
-                          <p className="text-[11px] text-slate-400 mt-1 max-w-xs mx-auto leading-relaxed">
-                            Hiện ban chỉ huy chưa đồng bộ dữ liệu nhận xét ngày của chiến sĩ {selectedChild.name}. Phụ huynh vui lòng kiểm tra lại sau 21h30.
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {reports.filter(r => r.studentId === selectedChild.id).map((report) => (
-                          <div key={report.id} className="bg-white rounded-2xl overflow-hidden shadow border border-slate-100 flex flex-col sm:flex-row hover:shadow-md transition-shadow duration-300">
-                            
-                            {/* Khối hình ảnh hoạt động dã ngoại */}
-                            {report.image && (
-                              <div className="w-full sm:w-48 md:w-56 h-40 sm:h-auto relative bg-slate-100 flex-shrink-0 overflow-hidden group">
-                                <img 
-                                  src={report.image} 
-                                  alt="Ảnh rèn luyện" 
-                                  className="w-full h-full object-cover cursor-zoom-in group-hover:scale-105 transition-all duration-300"
-                                  onClick={() => setZoomedImage({
-                                    url: report.image,
-                                    title: `${selectedChild.name} - Hoạt động: ${report.activity} (${report.date})`
-                                  })}
-                                />
-                                <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[8px] font-bold px-2 py-1 rounded backdrop-blur-sm flex items-center gap-1 shadow">
-                                  <Camera className="w-3 h-3 text-yellow-300" /> Phóng to
-                                </div>
-                              </div>
-                            )}
+                    {(() => {
+                      // Gộp nhận xét cá nhân của bé và nhận xét chung ('COMMON') thuộc tiểu đội của bé
+                      const filteredReports = reports.filter(r => 
+                        r.studentId === selectedChild.id || 
+                        (r.studentId === 'COMMON' && r.squad === selectedChild.squad)
+                      );
 
-                            {/* Khối nhận xét chi tiết */}
-                            <div className="p-4 md:p-5 flex-1 flex flex-col justify-between space-y-3.5">
-                              <div className="space-y-2">
-                                <div className="flex flex-wrap justify-between items-start gap-1.5">
-                                  <span className="bg-green-100 text-green-950 font-extrabold text-[9px] px-2.5 py-1 rounded-lg flex items-center gap-1 border border-green-200">
-                                    <Calendar />
-                                    <span>Ngày: {report.date}</span>
-                                  </span>
+                      if (filteredReports.length === 0) {
+                        return (
+                          <div className="bg-white rounded-2xl p-8 md:p-12 shadow text-center border border-slate-100 space-y-3">
+                            <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center text-2xl mx-auto">📭</div>
+                            <div>
+                              <h4 className="font-bold text-slate-800 text-xs md:text-sm">Chưa có nhận xét ngày!</h4>
+                              <p className="text-[11px] text-slate-400 mt-1 max-w-xs mx-auto leading-relaxed">
+                                Hiện ban chỉ huy chưa đồng bộ dữ liệu nhận xét của chiến sĩ hoặc tiểu đội {selectedChild.name}. Phụ huynh vui lòng kiểm tra lại sau 21h30.
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
 
-                                  <div className="flex gap-1">
-                                    <span className="bg-emerald-100 text-emerald-800 text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-emerald-200">
-                                      Nền nếp: {report.behaviorRating}
-                                    </span>
-                                    <span className="bg-blue-100 text-blue-800 text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-blue-200">
-                                      Thể lực: {report.physicalRating}
+                      return (
+                        <div className="space-y-4">
+                          {filteredReports.map((report) => {
+                            const isCommon = report.studentId === 'COMMON';
+                            return (
+                              <div 
+                                key={report.id} 
+                                className={`bg-white rounded-2xl overflow-hidden shadow border flex flex-col sm:flex-row hover:shadow-md transition-shadow duration-300 ${
+                                  isCommon ? 'border-amber-400/70 ring-2 ring-amber-100' : 'border-slate-100'
+                                }`}
+                              >
+                                
+                                {/* Khối hình ảnh hoạt động dã ngoại */}
+                                {report.image && (
+                                  <div className="w-full sm:w-48 md:w-56 h-40 sm:h-auto relative bg-slate-100 flex-shrink-0 overflow-hidden group">
+                                    <img 
+                                      src={report.image} 
+                                      alt="Ảnh rèn luyện" 
+                                      className="w-full h-full object-cover cursor-zoom-in group-hover:scale-105 transition-all duration-300"
+                                      onClick={() => setZoomedImage({
+                                        url: report.image,
+                                        title: isCommon 
+                                          ? `[HÌNH CHUNG TIỂU ĐỘI ${report.squad}] - Hoạt động: ${report.activity} (${report.date})`
+                                          : `${selectedChild.name} - Hoạt động: ${report.activity} (${report.date})`
+                                      })}
+                                    />
+                                    <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[8px] font-bold px-2 py-1 rounded backdrop-blur-sm flex items-center gap-1 shadow">
+                                      <Camera className="w-3 h-3 text-yellow-300" /> Phóng to
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Khối nhận xét chi tiết */}
+                                <div className="p-4 md:p-5 flex-1 flex flex-col justify-between space-y-3.5">
+                                  <div className="space-y-2">
+                                    <div className="flex flex-wrap justify-between items-start gap-1.5">
+                                      <span className={`font-extrabold text-[9px] px-2.5 py-1 rounded-lg flex items-center gap-1 border ${
+                                        isCommon 
+                                          ? 'bg-amber-100 text-amber-950 border-amber-200' 
+                                          : 'bg-green-100 text-green-950 border-green-200'
+                                      }`}>
+                                        <Calendar />
+                                        <span>Ngày: {report.date}</span>
+                                      </span>
+
+                                      {/* Cờ thông báo hoạt động chung */}
+                                      {isCommon ? (
+                                        <span className="bg-amber-500 text-white text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-wide shadow-sm animate-pulse">
+                                          ⭐️ HOẠT ĐỘNG CHUNG CỦA TIỂU ĐỘI
+                                        </span>
+                                      ) : (
+                                        <div className="flex gap-1">
+                                          <span className="bg-emerald-100 text-emerald-800 text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-emerald-200">
+                                            Nền nếp: {report.behaviorRating}
+                                          </span>
+                                          <span className="bg-blue-100 text-blue-800 text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-blue-200">
+                                            Thể lực: {report.physicalRating}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="text-xs font-bold text-slate-800 flex items-center gap-1 pt-1">
+                                      📌 Hoạt động: <span className={`${isCommon ? 'text-amber-700' : 'text-custom-primary'} font-extrabold`}>{report.activity}</span>
+                                    </div>
+
+                                    <p className="text-xs text-slate-600 leading-relaxed font-semibold italic">
+                                      " {report.comment} "
+                                    </p>
+                                  </div>
+
+                                  <div className="flex justify-between items-center pt-2.5 border-t border-slate-100 text-[10px] font-bold text-slate-400">
+                                    <span>Người ghi: <strong className="text-custom-primary-dark">Tiểu Đội Trưởng {report.squad}</strong></span>
+                                    <span className="flex items-center gap-0.5 text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
+                                      <Heart />
+                                      <span>Đồng hành</span>
                                     </span>
                                   </div>
                                 </div>
 
-                                <div className="text-xs font-bold text-slate-800 flex items-center gap-1 pt-1">
-                                  📌 Hoạt động: <span className="text-custom-primary font-extrabold">{report.activity}</span>
-                                </div>
-
-                                <p className="text-xs text-slate-600 leading-relaxed font-semibold italic">
-                                  " {report.comment} "
-                                </p>
                               </div>
-
-                              <div className="flex justify-between items-center pt-2.5 border-t border-slate-100 text-[10px] font-bold text-slate-400">
-                                <span>Phụ trách: <strong className="text-custom-primary-dark">Tiểu Đội Trưởng {report.squad}</strong></span>
-                                <span className="flex items-center gap-0.5 text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
-                                  <Heart />
-                                  <span>Đồng hành</span>
-                                </span>
-                              </div>
-                            </div>
-
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                 </div>
@@ -1356,21 +1407,26 @@
                   </div>
                 </div>
 
-                {/* Chọn nhanh học sinh trên mobile bằng hộp Select Dropdown */}
+                {/* Chọn nhanh học sinh hoặc Nhận xét chung trên mobile bằng hộp Select Dropdown */}
                 <div className="block lg:hidden bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                  <label className="block text-[10px] font-extrabold text-slate-600 uppercase mb-1.5">Chọn nhanh học viên viết nhận xét:</label>
+                  <label className="block text-[10px] font-extrabold text-slate-600 uppercase mb-1.5">Chọn đối tượng viết nhận xét:</label>
                   <select
                     className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800"
                     value={selectedStudent ? selectedStudent.id : ''}
                     onChange={(e) => {
-                      const student = students.find(s => s.id === e.target.value);
-                      setSelectedStudent(student || null);
+                      if (e.target.value === 'COMMON') {
+                        setSelectedStudent({ id: 'COMMON', name: 'Nhận xét Chung Toàn Tiểu Đội', squad: loggedInSquad });
+                      } else {
+                        const student = students.find(s => s.id === e.target.value);
+                        setSelectedStudent(student || null);
+                      }
                       setNewActivity('');
                       setNewComment('');
                       setEditingReportId(null);
                     }}
                   >
-                    <option value="">-- Bấm để chọn chiến sĩ --</option>
+                    <option value="">-- Bấm để chọn chiến sĩ / Hoạt động chung --</option>
+                    <option value="COMMON" className="font-extrabold text-amber-600">⭐️ NHẬN XẾT CHUNG CHO TOÀN TIỂU ĐỘI ⭐️</option>
                     {students.filter(s => s.squad === loggedInSquad).map(student => (
                       <option key={student.id} value={student.id}>
                         {student.name} ({student.id})
@@ -1382,15 +1438,46 @@
                 {/* Phân chia khu vực nhập liệu */}
                 <div className="grid lg:grid-cols-12 gap-5 md:gap-6">
                   
-                  {/* Danh sách chiến sĩ thuộc tiểu đội quản lý - TRÊN PC */}
+                  {/* Danh sách chiến sĩ & Mục Nhận Xét Chung thuộc tiểu đội quản lý - TRÊN PC */}
                   <div className="hidden lg:block lg:col-span-5 space-y-4">
                     <div className="bg-white rounded-2xl shadow p-5 space-y-4">
                       <h3 className="text-xs font-black text-slate-700 tracking-wider uppercase flex justify-between items-center">
-                        <span>Danh sách Tiểu Đội {loggedInSquad}</span>
-                        <span className="text-[10px] text-slate-400 normal-case font-normal">(Chọn học sinh để viết)</span>
+                        <span>Danh sách đối tượng</span>
+                        <span className="text-[10px] text-slate-400 normal-case font-normal">(Chọn để viết hoặc đăng ảnh chung)</span>
                       </h3>
                       
-                      <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto pr-1">
+                      <div className="divide-y divide-slate-100 max-h-[450px] overflow-y-auto pr-1">
+                        
+                        {/* NÚT CHỌN ĐĂNG TIN / NHẬN XẾT CHUNG CHO CẢ TIỂU ĐỘI */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedStudent({ id: 'COMMON', name: 'Nhận xét Chung Toàn Tiểu Đội', squad: loggedInSquad });
+                            setNewActivity('');
+                            setNewComment('');
+                            setEditingReportId(null);
+                          }}
+                          className={`w-full text-left p-3.5 my-1 rounded-xl transition-all duration-200 flex items-center justify-between border active-scale ${
+                            selectedStudent?.id === 'COMMON'
+                              ? 'bg-amber-50 border-amber-400 shadow-sm ring-2 ring-amber-100' 
+                              : 'bg-gradient-to-r from-amber-50/50 to-orange-50/50 border-dashed border-amber-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-10 h-10 rounded-full bg-amber-400 flex items-center justify-center text-white text-lg shrink-0 shadow">
+                              📢
+                            </span>
+                            <div>
+                              <h4 className="font-extrabold text-amber-800 text-xs uppercase tracking-wide">Nhận Xét Chung Tiểu Đội</h4>
+                              <p className="text-[10px] text-slate-500 font-medium">Hiện với tất cả Phụ Huynh Tiểu Đội {loggedInSquad}</p>
+                            </div>
+                          </div>
+                          <span className="bg-amber-100 text-amber-800 text-[8px] font-bold px-2 py-0.5 rounded-full border border-amber-200 uppercase">
+                            Chung
+                          </span>
+                        </button>
+
+                        {/* DANH SÁCH CHIẾN SĨ CÁ NHÂN */}
                         {students.filter(s => s.squad === loggedInSquad).map((student) => {
                           const isSelected = selectedStudent?.id === student.id;
                           const hasReportToday = reports.some(r => r.studentId === student.id && r.date === newReportDate);
@@ -1439,7 +1526,7 @@
                     </div>
                   </div>
 
-                  {/* BIỂU MẪU VIẾT NHẬN XẾT HOẠT ĐỘNG MỚI */}
+                  {/* BIỂU MẪU VIẾT NHẬN XẾT HOẠT ĐỘNG MỚI (Gộp cá nhân & Chung) */}
                   <div className="lg:col-span-7">
                     {selectedStudent ? (
                       <form onSubmit={handleAddNewReport} className="bg-white rounded-2xl shadow p-5 md:p-6 border border-slate-100 space-y-4 animate-fadeIn">
@@ -1447,16 +1534,31 @@
                         <div className="flex justify-between items-center pb-3 border-b border-slate-100">
                           <div>
                             <span className="text-[8px] md:text-[10px] text-emerald-600 uppercase tracking-widest font-black block">
-                              {editingReportId ? 'CHỈNH SỬA NHẬT KÝ RÈN LUYỆN' : 'GHI NHẬT KÝ MỚI'}
+                              {editingReportId ? 'CHỈNH SỬA DỮ LIỆU ĐĂNG TẢI' : 'GHI NHẬT KÝ MỚI'}
                             </span>
-                            <h3 className="text-sm md:text-base font-black text-slate-800">
-                              {editingReportId ? `Sửa cho bé: ${selectedStudent.name}` : `Chiến sĩ: ${selectedStudent.name}`}
+                            <h3 className="text-sm md:text-base font-black text-slate-800 flex items-center gap-1.5">
+                              {selectedStudent.id === 'COMMON' ? (
+                                <span className="text-amber-600 flex items-center gap-1">
+                                  📢 Nhận xét Chung toàn Tiểu Đội {loggedInSquad}
+                                </span>
+                              ) : (
+                                <span>Chiến sĩ: {selectedStudent.name}</span>
+                              )}
                             </h3>
                           </div>
-                          <span className="bg-yellow-100 text-yellow-950 font-bold text-[10px] px-2.5 py-1 rounded-lg">
+                          <span className={`font-bold text-[10px] px-2.5 py-1 rounded-lg ${
+                            selectedStudent.id === 'COMMON' ? 'bg-amber-100 text-amber-800' : 'bg-yellow-100 text-yellow-950'
+                          }`}>
                             Mã: {selectedStudent.id}
                           </span>
                         </div>
+
+                        {/* Hướng dẫn hiển thị */}
+                        {selectedStudent.id === 'COMMON' && (
+                          <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-[10px] text-amber-800 font-semibold leading-relaxed">
+                            💡 <strong>Tin đăng chung:</strong> Mọi phụ huynh có con em thuộc <strong>Tiểu Đội {loggedInSquad}</strong> đều sẽ nhìn thấy nội dung nhận xét và hình ảnh dã dã chiến này trên học bạ của con họ. Rất thích hợp để chia sẻ ảnh chụp tập thể!
+                          </div>
+                        )}
 
                         <div className="grid sm:grid-cols-2 gap-3.5">
                           {/* Chọn Ngày hoạt động */}
@@ -1484,37 +1586,40 @@
                           </div>
                         </div>
 
-                        <div className="grid sm:grid-cols-2 gap-3.5">
-                          {/* Đánh giá Nền nếp tác phong */}
-                          <div>
-                            <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wide mb-1">Nền nếp tác phong</label>
-                            <select
-                              className="w-full p-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-xs font-medium bg-slate-50"
-                              value={newBehaviorRating}
-                              onChange={(e) => setNewBehaviorRating(e.target.value)}
-                            >
-                              <option value="Xuất Sắc">Xuất Sắc 🎖️</option>
-                              <option value="Tốt">Tốt 👍</option>
-                              <option value="Khá">Khá 👌</option>
-                              <option value="Đạt">Trung bình / Đạt</option>
-                            </select>
-                          </div>
+                        {/* Không cần đánh giá điểm số nếu là tin nhắn chung */}
+                        {selectedStudent.id !== 'COMMON' && (
+                          <div className="grid sm:grid-cols-2 gap-3.5">
+                            {/* Đánh giá Nền nếp tác phong */}
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wide mb-1">Nền nếp tác phong</label>
+                              <select
+                                className="w-full p-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-xs font-medium bg-slate-50"
+                                value={newBehaviorRating}
+                                onChange={(e) => setNewBehaviorRating(e.target.value)}
+                              >
+                                <option value="Xuất Sắc">Xuất Sắc 🎖️</option>
+                                <option value="Tốt">Tốt 👍</option>
+                                <option value="Khá">Khá 👌</option>
+                                <option value="Đạt">Trung bình / Đạt</option>
+                              </select>
+                            </div>
 
-                          {/* Đánh giá Thể chất sức khỏe */}
-                          <div>
-                            <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wide mb-1">Sức khỏe & Thể chất</label>
-                            <select
-                              className="w-full p-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-xs font-medium bg-slate-50"
-                              value={newPhysicalRating}
-                              onChange={(e) => setNewPhysicalRating(e.target.value)}
-                            >
-                              <option value="Xuất Sắc">Xuất Sắc 🎖️</option>
-                              <option value="Tốt">Tốt 👍</option>
-                              <option value="Khá">Khá 👌</option>
-                              <option value="Đạt">Trung bình / Đạt</option>
-                            </select>
+                            {/* Đánh giá Thể chất sức khỏe */}
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wide mb-1">Sức khỏe & Thể chất</label>
+                              <select
+                                className="w-full p-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-xs font-medium bg-slate-50"
+                                value={newPhysicalRating}
+                                onChange={(e) => setNewPhysicalRating(e.target.value)}
+                              >
+                                <option value="Xuất Sắc">Xuất Sắc 🎖️</option>
+                                <option value="Tốt">Tốt 👍</option>
+                                <option value="Khá">Khá 👌</option>
+                                <option value="Đạt">Trung bình / Đạt</option>
+                              </select>
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         {/* Tải tệp ảnh hoặc chọn link mẫu nhanh */}
                         <div className="grid sm:grid-cols-2 gap-3.5">
@@ -1576,10 +1681,15 @@
 
                         {/* Văn bản Nhận xét */}
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wide mb-1">Nội dung nhận xét chi tiết</label>
+                          <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wide mb-1">
+                            {selectedStudent.id === 'COMMON' ? 'Nội dung thông báo chung' : 'Nội dung nhận xét chi tiết của bé'}
+                          </label>
                           <textarea
                             rows="3"
-                            placeholder="Nhập biểu hiện, tác phong rèn luyện cụ thể của cháu..."
+                            placeholder={selectedStudent.id === 'COMMON' 
+                              ? 'Ví dụ: Hôm nay toàn Tiểu Đội 1 đã hoàn thành xuất sắc bài huấn luyện cứu hộ, cứu nạn tại rừng dã chiến...'
+                              : 'Nhập biểu hiện, tác phong rèn luyện cụ thể của cháu...'
+                            }
                             className="w-full p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-xs font-semibold text-slate-800"
                             value={newComment}
                             onChange={(e) => setNewComment(e.target.value)}
@@ -1617,9 +1727,9 @@
                           👮‍♂️
                         </div>
                         <div>
-                          <h3 className="font-bold text-slate-700 text-xs md:text-sm">Chưa lựa chọn Chiến sĩ</h3>
+                          <h3 className="font-bold text-slate-700 text-xs md:text-sm">Chưa lựa chọn đối tượng nhận xét</h3>
                           <p className="text-[11px] text-slate-400 max-w-xs mt-1 leading-relaxed">
-                            Hãy chọn tên học sinh bất kỳ trong danh sách Tiểu Đội của bạn để tiến hành cập nhật nhận xét rèn luyện ngày.
+                            Hãy chọn tên học sinh bất kỳ hoặc bấm nút <strong>"Nhận Xét Chung Tiểu Đội"</strong> ở danh sách bên trái để tiến hành đăng tin.
                           </p>
                         </div>
                       </div>
@@ -1643,15 +1753,24 @@
                   ) : (
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {reports.filter(r => r.squad === loggedInSquad).map(report => {
-                        const student = students.find(s => s.id === report.studentId);
+                        const isCommon = report.studentId === 'COMMON';
+                        const student = isCommon ? { name: 'Nhận xét Chung Toàn Tiểu Đội' } : students.find(s => s.id === report.studentId);
+                        
                         return (
-                          <div key={report.id} className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3 flex flex-col justify-between hover:shadow-sm transition-all duration-300">
+                          <div 
+                            key={report.id} 
+                            className={`rounded-xl p-4 border space-y-3 flex flex-col justify-between hover:shadow-sm transition-all duration-300 ${
+                              isCommon ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200'
+                            }`}
+                          >
                             <div className="space-y-2">
                               <div className="flex justify-between items-center border-b border-slate-200/50 pb-2">
-                                <span className="font-extrabold text-xs text-emerald-950">
+                                <span className={`font-extrabold text-xs ${isCommon ? 'text-amber-800' : 'text-emerald-950'}`}>
                                   {student ? student.name : 'Chiến sĩ dã chiến'}
                                 </span>
-                                <span className="text-[10px] text-slate-400 font-mono">ID: {report.studentId}</span>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  {isCommon ? 'CHUNG' : `ID: ${report.studentId}`}
+                                </span>
                               </div>
                               <div className="text-[11px] font-bold text-slate-700">📌 Chuyên đề: {report.activity}</div>
                               <p className="text-[11px] text-slate-500 line-clamp-3 italic font-medium">"{report.comment}"</p>
@@ -1665,7 +1784,9 @@
                                   className="w-full h-full object-cover cursor-zoom-in hover:opacity-90 transition-all" 
                                   onClick={() => setZoomedImage({
                                     url: report.image,
-                                    title: `${student ? student.name : 'Chiến sĩ'} - Hoạt động: ${report.activity} (${report.date})`
+                                    title: isCommon
+                                      ? `[HÌNH CHUNG TIỂU ĐỘI ${report.squad}] - Hoạt động: ${report.activity} (${report.date})`
+                                      : `${student ? student.name : 'Chiến sĩ'} - Hoạt động: ${report.activity} (${report.date})`
                                   })}
                                 />
                               </div>
@@ -1674,10 +1795,12 @@
                             <div className="space-y-2 pt-2 border-t border-slate-200/50">
                               <div className="flex justify-between items-center text-[9px]">
                                 <span className="text-slate-400 font-semibold">{report.date}</span>
-                                <div className="flex gap-1">
-                                  <span className="bg-green-100 text-green-800 px-1 py-0.5 rounded text-[8px] font-bold">Tác phong: {report.behaviorRating}</span>
-                                  <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[8px] font-bold">Thể chất: {report.physicalRating}</span>
-                                </div>
+                                {!isCommon && (
+                                  <div className="flex gap-1">
+                                    <span className="bg-green-100 text-green-800 px-1 py-0.5 rounded text-[8px] font-bold">Tác phong: {report.behaviorRating}</span>
+                                    <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[8px] font-bold">Thể chất: {report.physicalRating}</span>
+                                  </div>
+                                )}
                               </div>
 
                               <div className="flex gap-2 pt-1.5 border-t border-slate-200/30">
@@ -1695,7 +1818,7 @@
                                       isOpen: true,
                                       type: 'report',
                                       id: report.id,
-                                      message: `Bạn có chắc muốn xóa báo cáo ngày ${report.date} của bé ${student ? student.name : 'Chiến sĩ'}?`
+                                      message: `Bạn có chắc muốn xóa báo cáo ngày ${report.date} này của ${isCommon ? 'tiểu đội' : 'học sinh'} khỏi đám mây?`
                                     });
                                   }}
                                   className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-1.5 px-2 rounded-lg text-[10px] border border-red-200 transition-colors flex items-center justify-center gap-1 active-scale shadow-sm"
@@ -1810,7 +1933,7 @@
                             defaultValue={currentPass}
                             onBlur={(e) => handleSaveSquadPasswords(code, e.target.value)}
                             placeholder="Mật khẩu"
-                            className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold text-center"
+                            className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-center"
                           />
                           <div className="text-[7px] text-slate-400 text-center uppercase tracking-wider font-extrabold">Nhấn ra ngoài để tự lưu</div>
                         </div>
@@ -2012,12 +2135,12 @@
 
                 </div>
 
-                {/* GIÁM SÁT TOÀN BỘ BÁO CÁO CỦA CÁC TIỂU ĐỘI */}
+                {/* GIÁM SÁT TOÀN BỘ BÁO CÁO CỦA CÁC TIỂU ĐỘI (Bao gồm báo cáo cá nhân và chung) */}
                 <div className="bg-white rounded-2xl shadow p-4 md:p-5 border border-slate-100 space-y-4">
                   <div className="border-b border-slate-100 pb-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5">
                     <h3 className="text-xs md:text-sm font-black text-slate-700 tracking-wider uppercase flex items-center gap-1.5">
                       <ImageIcon className="text-custom-primary" />
-                      <span>Giám Sát Báo Cáo Của Toàn Bộ Các Tiểu Đội</span>
+                      <span>Giám Sát Báo Cáo Của Toàn Bộ Các Tiểu Đội (Giám Sát Tổng)</span>
                     </h3>
                     <span className="text-[10px] font-bold text-custom-primary uppercase">Cập nhật thời gian thực</span>
                   </div>
@@ -2029,12 +2152,18 @@
                   ) : (
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {reports.map((report) => {
-                        const student = students.find(s => s.id === report.studentId);
+                        const isCommon = report.studentId === 'COMMON';
+                        const student = isCommon ? { name: 'Nhận xét Chung Toàn Tiểu Đội' } : students.find(s => s.id === report.studentId);
                         return (
-                          <div key={report.id} className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3 flex flex-col justify-between hover:shadow-sm">
+                          <div 
+                            key={report.id} 
+                            className={`rounded-xl p-4 border space-y-3 flex flex-col justify-between hover:shadow-sm ${
+                              isCommon ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200'
+                            }`}
+                          >
                             <div className="space-y-2">
                               <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                                <span className="font-extrabold text-xs text-custom-primary">
+                                <span className={`font-extrabold text-xs ${isCommon ? 'text-amber-800' : 'text-custom-primary'}`}>
                                   {student ? student.name : 'Chiến sĩ bí mật'}
                                 </span>
                                 <span className="text-[8px] bg-custom-accent text-green-950 font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">
@@ -2064,7 +2193,7 @@
                                       isOpen: true,
                                       type: 'report',
                                       id: report.id,
-                                      message: `Bạn có chắc muốn xóa báo cáo ngày ${report.date} của cháu ${student ? student.name : 'Chiến sĩ'}?`
+                                      message: `Bạn có chắc muốn xóa báo cáo ngày ${report.date} này của ${isCommon ? 'tiểu đội' : 'học sinh'}?`
                                     });
                                   }}
                                   className="text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1 rounded-lg active-scale"
