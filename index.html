@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -18,10 +17,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <style>
-    /* =========================================================================
-       HƯỚNG DẪN DESIGN LẠI MÀU SẮC (THEME COLOR DESIGN)
-       Bạn chỉ cần thay đổi các mã màu HEX (#...) dưới đây để đổi toàn bộ website:
-       ========================================================================= */
     :root {
       --primary: #1b5e20;          /* Xanh lá cây Cảnh sát nhân dân chủ đạo */
       --primary-dark: #124116;     /* Xanh lá đậm (Header, Trạng thái oai nghiêm) */
@@ -123,7 +118,7 @@
     // BỘ BIỂU TƯỢNG SVG NGUYÊN BẢN 100% CỦA KHÁCH HÀNG
     // ============================================================================
     const Shield = () => (
-      <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center">
+      <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-emerald-800">
         <img
           src="Logo.png"
           alt="Logo"
@@ -228,14 +223,23 @@
       generalCode: 'BCHTONG' 
     };
 
+    // Hàm tạo mật khẩu phụ huynh ngẫu nhiên theo logic thống nhất
+    const createParentPasswordByLogic = (phone, id) => {
+      const cleanPhone = phone.trim().replace(/\s/g, '');
+      const lastFour = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : '1234';
+      const cleanId = id.trim().replace(/\D/g, '');
+      const numId = cleanId ? cleanId : '000';
+      return `PH${lastFour}${numId}`;
+    };
+
     const DEFAULT_STUDENTS = [
-      { id: 'CS001', name: 'Nguyễn Minh Quân', squad: 1, avatar: '👶', parentPhone: '0987654321', parentEmail: 'phuhuynh@gmail.com' },
-      { id: 'CS002', name: 'Nguyễn Minh Thư', squad: 1, avatar: '👧', parentPhone: '0987654321', parentEmail: 'phuhuynh@gmail.com' },
-      { id: 'CS003', name: 'Trần Hoàng Bách', squad: 2, avatar: '👦', parentPhone: '0912345678', parentEmail: 'bach@gmail.com' },
-      { id: 'CS004', name: 'Phạm Gia Bảo', squad: 3, avatar: '👶', parentPhone: '0909090909', parentEmail: 'bao@gmail.com' },
-      { id: 'CS005', name: 'Lê Mai Chi', squad: 4, avatar: '👧', parentPhone: '0933333333', parentEmail: 'chi@gmail.com' },
-      { id: 'CS006', name: 'Đỗ Hùng Anh', squad: 5, avatar: '👦', parentPhone: '0944444444', parentEmail: 'anh@gmail.com' },
-      { id: 'CS007', name: 'Nguyễn Hoàng Nam', squad: 2, avatar: '👶', parentPhone: '0987654321', parentEmail: 'phuhuynh@gmail.com' },
+      { id: 'CS001', name: 'Nguyễn Minh Quân', squad: 1, avatar: '👶', parentPhone: '0987654321', parentEmail: 'phuhuynh@gmail.com', parentPassword: 'PH4321001' },
+      { id: 'CS002', name: 'Nguyễn Minh Thư', squad: 1, avatar: '👧', parentPhone: '0987654321', parentEmail: 'phuhuynh@gmail.com', parentPassword: 'PH4321002' },
+      { id: 'CS003', name: 'Trần Hoàng Bách', squad: 2, avatar: '👦', parentPhone: '0912345678', parentEmail: 'bach@gmail.com', parentPassword: 'PH5678003' },
+      { id: 'CS004', name: 'Phạm Gia Bảo', squad: 3, avatar: '👶', parentPhone: '0909090909', parentEmail: 'bao@gmail.com', parentPassword: 'PH0909004' },
+      { id: 'CS005', name: 'Lê Mai Chi', squad: 4, avatar: '👧', parentPhone: '0933333333', parentEmail: 'chi@gmail.com', parentPassword: 'PH3333005' },
+      { id: 'CS006', name: 'Đỗ Hùng Anh', squad: 5, avatar: '👦', parentPhone: '0944444444', parentEmail: 'anh@gmail.com', parentPassword: 'PH4444006' },
+      { id: 'CS007', name: 'Nguyễn Hoàng Nam', squad: 2, avatar: '👶', parentPhone: '0987654321', parentEmail: 'phuhuynh@gmail.com', parentPassword: 'PH4321007' },
     ];
 
     const DEFAULT_REPORTS = [
@@ -278,7 +282,6 @@
     // COMPONENT CHÍNH CỦA ỨNG DỤNG
     // ============================================================================
     function App() {
-      // Đọc trực tiếp từ đối tượng window.fb đã khởi động độc lập ngoài Babel
       const fb = window.fb;
       
       const [user, setUser] = useState(null);
@@ -296,6 +299,9 @@
       const [inputScriptUrl, setInputScriptUrl] = useState('');
       const [isUploadingToDrive, setIsUploadingToDrive] = useState(false);
 
+      // Quản lý mật khẩu thủ công cho các tiểu đội do BCH Tổng cài đặt
+      const [squadPasswords, setSquadPasswords] = useState({});
+
       // Trạng thái điều hướng giao diện chính
       const [role, setRole] = useState(null); 
       const [currentView, setCurrentView] = useState('landing'); 
@@ -310,11 +316,13 @@
 
       // Đăng nhập Phụ Huynh
       const [parentInput, setParentInput] = useState('');
+      const [parentPasswordInput, setParentPasswordInput] = useState('');
       const [loggedInParentStudents, setLoggedInParentStudents] = useState([]);
       const [selectedChild, setSelectedChild] = useState(null);
 
       // Đăng nhập Ban Chỉ Huy
-      const [squadCode, setSquadCode] = useState('');
+      const [squadCodeSelect, setSquadCodeSelect] = useState('TD01');
+      const [squadPasswordInput, setSquadPasswordInput] = useState('');
       const [loggedInSquad, setLoggedInSquad] = useState(null);
 
       // Biểu mẫu viết nhận xét, đánh giá rèn luyện
@@ -341,25 +349,20 @@
         if (!url) return '';
         const trimmedUrl = url.trim();
 
-        // Kiểm tra xem có phải là đường dẫn Google Drive không
         if (trimmedUrl.includes('drive.google.com')) {
           let fileId = '';
-          
-          // Định dạng 1: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
           const matchPath = trimmedUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
           if (matchPath && matchPath[1]) {
             fileId = matchPath[1];
           } else {
-            // Định dạng 2: https://drive.google.com/open?id=FILE_ID hoặc các dạng truy vấn id
             const matchQuery = trimmedUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
             if (matchQuery && matchQuery[1]) {
               fileId = matchQuery[1];
             }
           }
-
           if (fileId) {
-  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w2000`;
-}
+            return `https://drive.google.com/thumbnail?id=${fileId}&sz=w2000`;
+          }
         }
         return trimmedUrl;
       };
@@ -371,9 +374,7 @@
         const initFirebase = async () => {
           if (!fb) return;
 
-          let config;
-          // Cấu hình gốc Firebase của bạn
-          config = {
+          let config = {
             apiKey: "AIzaSyBqw-x93QgIIGe_AmKpO_BgUL1vJ9RaGrI",
             authDomain: "chiensinhi.firebaseapp.com",
             projectId: "chiensinhi",
@@ -390,7 +391,6 @@
           const firestoreDb = fb.getFirestore(app);
           setDb(firestoreDb);
 
-          // Xác thực nặc danh để phân quyền ghi đọc an toàn trên Firestore
           try {
             await fb.signInAnonymously(auth);
           } catch (error) {
@@ -417,6 +417,7 @@
         const studentsRef = fb.collection(db, basePath, 'students');
         const reportsRef = fb.collection(db, basePath, 'reports');
         const configRef = fb.doc(db, basePath, 'config', 'googleDrive');
+        const squadPasswordsRef = fb.doc(db, basePath, 'config', 'squadPasswords');
 
         // Đồng bộ danh sách học viên dã chiến
         const unSubStudents = fb.onSnapshot(studentsRef, (snap) => {
@@ -425,7 +426,15 @@
               await fb.setDoc(fb.doc(db, basePath, 'students', s.id), s);
             });
           } else {
-            const data = snap.docs.map(doc => ({ ...doc.data() }));
+            const data = snap.docs.map(doc => {
+              const item = doc.data();
+              // Đảm bảo các tài khoản cũ cũng được cập nhật mật khẩu tự động theo đúng logic
+              if (!item.parentPassword) {
+                item.parentPassword = createParentPasswordByLogic(item.parentPhone, item.id);
+                fb.setDoc(fb.doc(db, basePath, 'students', item.id), item, { merge: true });
+              }
+              return item;
+            });
             setStudents(data);
           }
         }, (error) => console.error("Lỗi khi đồng bộ học viên từ Cloud:", error));
@@ -451,16 +460,35 @@
           }
         }, (error) => console.error("Lỗi tải cấu hình Google Drive:", error));
 
+        // Đồng bộ cấu hình mật khẩu bảo mật của Tiểu Đội
+        const unSubSquadPasswords = fb.onSnapshot(squadPasswordsRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setSquadPasswords(docSnap.data() || {});
+          } else {
+            // Khởi tạo mật khẩu mặc định nếu chưa cấu hình
+            const defaultPasses = {
+              'TD01': '123456',
+              'TD02': '123456',
+              'TD03': '123456',
+              'TD04': '123456',
+              'TD05': '123456'
+            };
+            fb.setDoc(squadPasswordsRef, defaultPasses);
+            setSquadPasswords(defaultPasses);
+          }
+        }, (error) => console.error("Lỗi tải mật khẩu các tiểu đội:", error));
+
         setIsInitializingData(false);
 
         return () => {
           unSubStudents();
           unSubReports();
           unSubConfig();
+          unSubSquadPasswords();
         };
       }, [user, db, appId]);
 
-      // Tự động tạo mã cho các tiểu đội tùy theo số lượng cấu hình hiện có
+      // Tạo mã hiển thị cố định của các tiểu đội
       const getSquadCodes = () => {
         const codes = {};
         for (let i = 1; i <= squadCount; i++) {
@@ -481,14 +509,23 @@
       const handleParentLogin = (e) => {
         e.preventDefault();
         const input = parentInput.trim();
+        const passwordInput = parentPasswordInput.trim();
+
         if (!input) {
           showToast('Vui lòng điền Số điện thoại hoặc Email để tiếp tục!', 'error');
           return;
         }
+        if (!passwordInput) {
+          showToast('Vui lòng nhập Mật khẩu Phụ Huynh!', 'error');
+          return;
+        }
 
-        const foundChildren = students.filter(
-          s => s.parentPhone === input || s.parentEmail.toLowerCase() === input.toLowerCase()
-        );
+        // Kiểm tra khớp thông tin liên hệ và Mật khẩu tự động theo logic
+        const foundChildren = students.filter(s => {
+          const matchContact = s.parentPhone === input || s.parentEmail.toLowerCase() === input.toLowerCase();
+          const matchPassword = s.parentPassword === passwordInput;
+          return matchContact && matchPassword;
+        });
 
         if (foundChildren.length > 0) {
           setLoggedInParentStudents(foundChildren);
@@ -497,37 +534,49 @@
           setCurrentView('parent_dashboard');
           showToast(`Chào mừng phụ huynh! Đã liên kết thành công ${foundChildren.length} con em.`);
         } else {
-          showToast('Không tìm thấy thông tin học viên khớp với SĐT hoặc Email của bạn!', 'error');
+          showToast('Thông tin đăng nhập hoặc mật khẩu không chính xác! Hãy kiểm tra lại.', 'error');
         }
       };
 
       // XỬ LÝ ĐĂNG NHẬP BAN CHỈ HUY (TIỂU ĐỘI HOẶC TỔNG)
       const handleCommanderLogin = (e) => {
         e.preventDefault();
-        const code = squadCode.trim().toUpperCase();
-        if (!code) {
-          showToast('Vui lòng điền mật mã tác chiến tiểu đội!', 'error');
+        const squadCode = squadCodeSelect.trim().toUpperCase();
+        const inputPass = squadPasswordInput.trim();
+
+        if (!inputPass) {
+          showToast('Vui lòng điền mật khẩu đăng nhập!', 'error');
           return;
         }
 
         // Quyền tối cao: Trưởng Ban Chỉ Huy Tổng
-        if (code === APP_CONFIG.generalCode) {
-          setRole('general');
-          setLoggedInSquad(null);
-          setCurrentView('general_dashboard');
-          showToast('Đăng nhập thành công! Quyền hạn: BAN CHỈ HUY TỔNG.');
+        if (squadCode === APP_CONFIG.generalCode) {
+          if (inputPass === APP_CONFIG.generalCode) {
+            setRole('general');
+            setLoggedInSquad(null);
+            setCurrentView('general_dashboard');
+            showToast('Đăng nhập thành công! Quyền hạn: BAN CHỈ HUY TỔNG.');
+          } else {
+            showToast('Mật khẩu của Ban Chỉ Huy Tổng không đúng!', 'error');
+          }
           return;
         }
 
         // Quyền hạn: Chỉ Huy Tiểu Đội dã chiến
-        const squadNum = Object.keys(squadCodes).find(key => squadCodes[key] === code);
-        if (squadNum) {
-          setLoggedInSquad(parseInt(squadNum));
-          setRole('commander');
-          setCurrentView('commander_dashboard');
-          showToast(`Đăng nhập thành công! Quyền hạn: CHỈ HUY TIỂU ĐỘI ${squadNum}`);
+        const configuredPassword = squadPasswords[squadCode];
+        
+        if (configuredPassword) {
+          if (inputPass === configuredPassword) {
+            const squadNum = parseInt(squadCode.replace('TD', ''));
+            setLoggedInSquad(squadNum);
+            setRole('commander');
+            setCurrentView('commander_dashboard');
+            showToast(`Đăng nhập thành công! Quyền hạn: CHỈ HUY TIỂU ĐỘI ${squadNum}`);
+          } else {
+            showToast('Mật khẩu bảo mật của Tiểu Đội không chính xác!', 'error');
+          }
         } else {
-          showToast('Mật mã không đúng hoặc Tiểu đội này chưa được kích hoạt!', 'error');
+          showToast('Tiểu đội này chưa được cấu hình mật khẩu bảo mật trên máy chủ Cloud!', 'error');
         }
       };
 
@@ -550,12 +599,26 @@
         }
       };
 
+      // HÀM LƯU / THIẾT LẬP MẬT KHẨU THỦ CÔNG CHO CÁC TIỂU ĐỘI (BCH TỔNG)
+      const handleSaveSquadPasswords = async (code, password) => {
+        if (!db || !fb) return;
+        try {
+          const basePath = `artifacts/${appId}/public/data`;
+          const ref = fb.doc(db, basePath, 'config', 'squadPasswords');
+          await fb.setDoc(ref, {
+            [code]: password.trim()
+          }, { merge: true });
+          showToast(`Đã lưu mật khẩu mới cho ${code} thành công!`);
+        } catch (error) {
+          showToast('Không thể cập nhật mật khẩu tiểu đội lên đám mây!', 'error');
+        }
+      };
+
       // HÀM ĐỌC ẢNH TẢI LÊN TỪ ĐIỆN THOẠI/MÁY TÍNH VÀ ĐỒNG BỘ LÊN GOOGLE DRIVE
       const handleFileChangeAndUpload = async (e) => {
         if (!e.target.files || !e.target.files[0]) return;
         const file = e.target.files[0];
 
-        // Nếu chưa cấu hình Google Apps Script URL thì báo lỗi
         if (!driveScriptUrl) {
           showToast('Chưa cấu hình Cổng tải ảnh Google Drive. Vui lòng nhờ BCH Tổng thiết lập cổng kết nối Google Drive!', 'error');
           return;
@@ -565,12 +628,9 @@
         showToast('Đang tải ảnh trực tiếp lên Google Drive cá nhân của bạn...');
 
         try {
-          // Đọc file dưới dạng Base64
           const reader = new FileReader();
           reader.onload = async (event) => {
             const base64String = event.target.result.split(',')[1];
-            
-            // Gửi yêu cầu tải lên tới Google Apps Script
             const response = await fetch(driveScriptUrl, {
               method: 'POST',
               mode: 'cors',
@@ -587,9 +647,9 @@
             const result = await response.json();
             
             if (result.success) {
-              setNewImage(result.url); // Trả về link trực tiếp (uc?export=view&id=...)
-              setCustomImageFile(null); // Reset file cục bộ vì đã có link Drive
-              showToast('Đã tải ảnh lên Google Drive công khai và gán link tự động thành công!');
+              setNewImage(result.url); 
+              setCustomImageFile(null); 
+              showToast('Đã tải ảnh lên Google Drive và gán liên kết tự động thành công!');
             } else {
               showToast(`Lỗi tải lên Drive: ${result.error || 'Vui lòng kiểm tra lại cấu hình Web App'}`, 'error');
             }
@@ -620,10 +680,8 @@
           return;
         }
 
-        // Tự động kiểm tra và chuyển đổi link Google Drive nếu có dán link
         let processedImageUrl = parseAndConvertDriveUrl(newImage);
 
-        // Ưu tiên ảnh mẫu mặc định nếu không có ảnh cụ thể nào được chọn/nhập
         if (!processedImageUrl) {
           processedImageUrl = APP_CONFIG.defaultImages.squad1;
         }
@@ -680,7 +738,7 @@
         }
       };
 
-      // BCH TỔNG THÊM MỚI HỌC VIÊN & CHỈ ĐỊNH TIỂU ĐỘI TÁC CHIẾN (LƯU LÊN CLOUD FIRESTORE)
+      // BCH TỔNG THÊM MỚI HỌC VIÊN & TỰ ĐỘNG TẠO MẬT KHẨU PHỤ HUYNH THEO LOGIC
       const handleAddStudentByGeneral = async (e) => {
         e.preventDefault();
         if (!newStudentName.trim() || !newStudentPhone.trim() || !newStudentEmail.trim()) {
@@ -688,14 +746,19 @@
           return;
         }
 
-        const newId = `CS-${Math.floor(100 + Math.random() * 900)}`;
+        const newId = `CS${Math.floor(100 + Math.random() * 900)}`;
+        
+        // Sinh mật khẩu tự động theo logic đã định nghĩa
+        const generatedPassword = createParentPasswordByLogic(newStudentPhone, newId);
+
         const newStudentObj = {
           id: newId,
           name: newStudentName.trim(),
           squad: parseInt(newStudentSquad),
           avatar: newStudentAvatar,
           parentPhone: newStudentPhone.trim(),
-          parentEmail: newStudentEmail.trim().toLowerCase()
+          parentEmail: newStudentEmail.trim().toLowerCase(),
+          parentPassword: generatedPassword
         };
 
         try {
@@ -703,7 +766,7 @@
           const studentRef = fb.doc(db, basePath, 'students', newId);
           await fb.setDoc(studentRef, newStudentObj);
 
-          showToast(`Đã đồng bộ học viên nhí ${newStudentObj.name} lên máy chủ Cloud thành công!`);
+          showToast(`Đã đồng bộ học viên nhí ${newStudentObj.name} (Mật khẩu phụ huynh: ${generatedPassword}) lên Cloud thành công!`);
 
           setNewStudentName('');
           setNewStudentPhone('');
@@ -731,7 +794,6 @@
           const basePath = `artifacts/${appId}/public/data`;
           await fb.deleteDoc(fb.doc(db, basePath, 'students', id));
           
-          // Xóa đồng thời các báo cáo liên quan
           const relatedReports = reports.filter(r => r.studentId === id);
           relatedReports.forEach(async (r) => {
             await fb.deleteDoc(fb.doc(db, basePath, 'reports', r.id));
@@ -782,7 +844,8 @@
         setRole(null);
         setCurrentView('landing');
         setParentInput('');
-        setSquadCode('');
+        setParentPasswordInput('');
+        setSquadPasswordInput('');
         setLoggedInParentStudents([]);
         setSelectedChild(null);
         setLoggedInSquad(null);
@@ -793,7 +856,6 @@
         showToast('Đã đăng xuất tài khoản an toàn.');
       };
 
-      // TRẠNG THÁI CHỜ KẾT NỐI BAN ĐẦU
       if (isInitializingData) {
         return (
           <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -882,17 +944,16 @@
                       Rèn Đức Luyện Tài - Sẵn Sàng Bảo Vệ Tổ Quốc!
                     </h2>
                     <p className="text-xs md:text-sm text-emerald-100 leading-relaxed font-medium">
-                      Chào mừng quý phụ huynh và các đồng chí. Sổ liên lạc đám mây tự động đồng bộ kết quả huấn luyện, nếp sinh hoạt nội vụ và hỗ trợ lưu trữ hình ảnh thông qua Google Drive cá nhân của bạn vô hạn.
+                      Chào mừng quý phụ huynh và các đồng chí. Sổ liên lạc đám mây tự động đồng bộ kết quả huấn luyện, bảo mật thông tin bằng mật khẩu quản trị thủ công cho Chỉ Huy và mật khẩu theo logic thông minh cho phụ huynh học viên.
                     </p>
                   </div>
 
                   <div className="mt-8 bg-black/35 backdrop-blur-md p-4 rounded-2xl border border-white/10 max-w-sm space-y-2">
                     <div className="text-xs text-custom-accent font-bold uppercase tracking-wider">Mẹo thử nghiệm nhanh hệ thống (Demo):</div>
                     <ul className="text-[11px] text-slate-200 font-medium space-y-1 font-mono">
-                      <li>• SĐT phụ huynh (Quản lý 3 con): <strong className="text-white">0987654321</strong></li>
-                      <li>• Email phụ huynh (Quản lý 3 con): <strong className="text-white">phuhuynh@gmail.com</strong></li>
-                      <li>• Mật mã các Tiểu Đội: {Object.keys(squadCodes).map(num => <span key={num} className="mr-1"><strong className="text-white">{squadCodes[num]}</strong> ({num})</span>)}</li>
-                      <li>• Mật mã Chỉ Huy Tổng: <strong className="text-white">BCHTONG</strong></li>
+                      <li>• Đăng nhập Phụ huynh mẫu (CS001, CS002): <br />Liên hệ: <strong className="text-white">0987654321</strong> - Mật khẩu: <strong className="text-yellow-300">PH4321001</strong> hoặc <strong className="text-yellow-300">PH4321002</strong></li>
+                      <li>• Đăng nhập Chỉ Huy Tiểu Đội 1: <br />Tiểu đội: <strong className="text-white">TD01</strong> - Mật khẩu: <strong className="text-yellow-300">123456</strong></li>
+                      <li>• Mật mã Chỉ Huy Tổng: <br />Tiểu đội: <strong className="text-white">BCHTONG</strong> - Mật khẩu: <strong className="text-yellow-300">BCHTONG</strong></li>
                     </ul>
                   </div>
                 </div>
@@ -909,14 +970,14 @@
                         </div>
                         <div>
                           <h3 className="text-lg font-black text-slate-800">Cổng Thông Tin Phụ Huynh</h3>
-                          <p className="text-xs text-slate-400 font-medium">Theo dõi học bạ rèn luyện, đánh giá điểm số, tải ảnh hoạt động dã ngoại của con.</p>
+                          <p className="text-xs text-slate-400 font-medium">Theo dõi học bạ rèn luyện, xem điểm số, nhận xét dã chiến và hình ảnh của con.</p>
                         </div>
                       </div>
                       <hr className="border-slate-100" />
                       
                       <form onSubmit={handleParentLogin} className="space-y-4">
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">Số điện thoại hoặc Email</label>
+                          <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">Số điện thoại hoặc Email đăng ký</label>
                           <div className="relative">
                             <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                               <User />
@@ -930,6 +991,23 @@
                             />
                           </div>
                         </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">Mật khẩu Phụ Huynh</label>
+                          <div className="relative">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                              <Lock />
+                            </span>
+                            <input
+                              type="password"
+                              value={parentPasswordInput}
+                              onChange={(e) => setParentPasswordInput(e.target.value)}
+                              placeholder="Mẫu: PH + 4 số cuối SĐT + Số ID học sinh"
+                              className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-600 focus:bg-white text-xs font-semibold text-slate-800 transition-all"
+                            />
+                          </div>
+                        </div>
+
                         <button
                           type="submit"
                           className="w-full bg-custom-primary hover:bg-custom-primary-light text-white font-extrabold py-3.5 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 text-xs uppercase tracking-wider transition-all hover:scale-[1.02]"
@@ -941,7 +1019,7 @@
                     </div>
 
                     <div className="mt-6 bg-emerald-50/50 p-3.5 rounded-xl border border-emerald-100 text-[10px] text-emerald-800 leading-relaxed font-semibold">
-                      💡 Mẹo: Hệ thống tự động đồng bộ đám mây. Nếu phụ huynh đăng ký từ 2, 3 con trở lên học cùng một khóa học, chỉ cần đăng nhập bằng một SĐT/Email là quản lý được tất cả các con.
+                      💡 <strong>Quy luật mật khẩu tự động:</strong> Mỗi học sinh được hệ thống cấp một mật khẩu dựa trên logic bảo mật để đảm bảo phụ huynh tự tra cứu dễ dàng mà không bị trùng lặp thông tin.
                     </div>
                   </div>
 
@@ -954,27 +1032,45 @@
                         </div>
                         <div>
                           <h3 className="text-lg font-black text-slate-800">Cổng Ban Chỉ Huy & Phụ Trách</h3>
-                          <p className="text-xs text-slate-400 font-medium">Báo cáo tình hình rèn luyện dã ngoại, tải ảnh dã chiến và ghi nhận xét ngày.</p>
+                          <p className="text-xs text-slate-400 font-medium">Báo cáo tình hình rèn luyện dã ngoại, tải ảnh dã chiến và cấu hình hệ thống.</p>
                         </div>
                       </div>
                       <hr className="border-slate-100" />
                       
                       <form onSubmit={handleCommanderLogin} className="space-y-4">
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">Mã Bảo Mật Đăng Nhập</label>
+                          <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">Mã Tiểu Đội / Đơn vị</label>
+                          <select
+                            value={squadCodeSelect}
+                            onChange={(e) => setSquadCodeSelect(e.target.value)}
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:bg-white text-xs font-semibold text-slate-800 transition-all"
+                          >
+                            <option value="BCHTONG">⭐️ BAN CHỈ HUY TỔNG (BCHTONG)</option>
+                            {Array.from({ length: squadCount }, (_, i) => i + 1).map((num) => {
+                              const code = `TD${String(num).padStart(2, '0')}`;
+                              return (
+                                <option key={num} value={code}>Tiểu Đội {num} ({code})</option>
+                              );
+                            })}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">Mật Khẩu Đăng Nhập Bảo Mật</label>
                           <div className="relative">
                             <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                               <Lock />
                             </span>
                             <input
                               type="password"
-                              value={squadCode}
-                              onChange={(e) => setSquadCode(e.target.value)}
-                              placeholder="Mã đăng nhập"
+                              value={squadPasswordInput}
+                              onChange={(e) => setSquadPasswordInput(e.target.value)}
+                              placeholder="Nhập mật khẩu được cấp"
                               className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:bg-white text-xs font-semibold text-slate-800 tracking-widest font-mono transition-all"
                             />
                           </div>
                         </div>
+
                         <button
                           type="submit"
                           className="w-full bg-custom-secondary hover:bg-custom-secondary-hover text-white font-extrabold py-3.5 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 text-xs uppercase tracking-wider transition-all hover:scale-[1.02]"
@@ -986,7 +1082,7 @@
                     </div>
 
                     <div className="mt-6 bg-yellow-50/50 p-3.5 rounded-xl border border-yellow-100 text-[10px] text-amber-800 leading-relaxed font-semibold">
-                      🛡️ Chỉ huy tiểu đội sử dụng mã bảo mật riêng của mình để truy cập.
+                      🛡️ Chỉ huy tiểu đội sử dụng mã đơn vị và mật khẩu được cấu hình thủ công bởi BCH Tổng để truy cập.
                     </div>
                   </div>
 
@@ -1187,7 +1283,7 @@
                       <span className="text-[10px] font-bold uppercase tracking-widest bg-custom-primary text-custom-accent px-2.5 py-1 rounded-md">
                         Chỉ Huy Tác Chiến Tiểu Đội
                       </span>
-                      <span className="text-xs text-slate-400 font-mono font-bold">Mã bảo mật: {squadCodes[loggedInSquad]}</span>
+                      <span className="text-xs text-slate-400 font-mono font-bold">Mã bảo mật đơn vị: {squadCodes[loggedInSquad]}</span>
                     </div>
                     <h2 className="text-2xl font-black text-slate-800 mt-1">
                       Bảng Điều Hành Tiểu Đội {loggedInSquad}
@@ -1455,7 +1551,7 @@
                 <div className="bg-white rounded-2xl shadow p-5 border border-slate-100 space-y-4 mt-6">
                   <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5 uppercase">
                     <ImageIcon className="w-5 h-5 text-custom-primary" />
-                    <span>Lịch Sử Nhật Ký Hoạt Động Tiểu Đội {loggedInSquad} ({reports.filter(r => r.squad === loggedInSquad).length} báo cáo)</span>
+                    <span>Lịch Sử Nhật Ký Hoạt Đội Tiểu Đội {loggedInSquad} ({reports.filter(r => r.squad === loggedInSquad).length} báo cáo)</span>
                   </h3>
                   
                   {reports.filter(r => r.squad === loggedInSquad).length === 0 ? (
@@ -1611,6 +1707,37 @@
                   </form>
                 </div>
 
+                {/* THIẾT LẬP MẬT KHẨU THỦ CÔNG CHO CÁC TIỂU ĐỘI (Yêu cầu mới) */}
+                <div className="bg-white rounded-2xl p-5 shadow border border-slate-100 space-y-4">
+                  <div className="flex items-center gap-2 border-b pb-2">
+                    <span className="text-xl">🔑</span>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-800">Quản Lý Mật Khẩu Đăng Nhập Của Các Tiểu Đội</h3>
+                      <p className="text-[10px] text-slate-400">Thiết lập mật khẩu riêng biệt cho từng Tiểu đội trực thuộc để bảo vệ quyền đăng nhập viết nhận xét.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {Array.from({ length: squadCount }, (_, i) => i + 1).map((num) => {
+                      const code = `TD${String(num).padStart(2, '0')}`;
+                      const currentPass = squadPasswords[code] || '123456';
+                      return (
+                        <div key={num} className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                          <div className="text-xs font-bold text-slate-700">Tiểu Đội {num} ({code})</div>
+                          <input 
+                            type="text" 
+                            defaultValue={currentPass}
+                            onBlur={(e) => handleSaveSquadPasswords(code, e.target.value)}
+                            placeholder="Mật khẩu mới"
+                            className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-center"
+                          />
+                          <div className="text-[8px] text-slate-400 text-center">Bấm ra ngoài để tự động lưu đám mây</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* KHU VỰC THIẾT LẬP SỐ LƯỢNG TIỂU ĐỘI CHO BCH TỔNG KHI HỌC VIÊN ĐÔNG */}
                 <div className="bg-white rounded-2xl p-5 shadow border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
                   <div className="space-y-1 text-center md:text-left">
@@ -1685,7 +1812,7 @@
                           </select>
                         </div>
 
-                        {/* Chỉ định tiểu đội rèn luyện - Động dựa trên quy mô số lượng tiểu đội */}
+                        {/* Chỉ định tiểu đội rèn luyện */}
                         <div>
                           <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">Tiểu Đội Chỉ Định</label>
                           <select
@@ -1726,6 +1853,13 @@
                         />
                       </div>
 
+                      <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-[10px] text-emerald-800 font-semibold space-y-1">
+                        <div>🔒 <strong>Mật khẩu Phụ huynh tạo mới (Auto):</strong></div>
+                        <div className="font-mono bg-white p-1 rounded text-center border font-extrabold text-custom-primary">
+                          {newStudentPhone ? createParentPasswordByLogic(newStudentPhone, '(Mã số ngẫu nhiên)') : 'Chưa nhập số điện thoại'}
+                        </div>
+                      </div>
+
                       <button
                         type="submit"
                         className="w-full bg-custom-primary hover:bg-custom-primary-light text-white font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider shadow transition-all flex items-center justify-center gap-1.5"
@@ -1742,7 +1876,7 @@
                     <div className="bg-white rounded-2xl shadow p-5 border border-slate-100 space-y-4">
                       <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                         <h3 className="text-xs font-black text-slate-700 tracking-wider uppercase">Danh Sách Học Viên Toàn Hệ Thống</h3>
-                        <span className="text-[10px] text-slate-400 font-bold">Chỉ BCH Tổng mới có thẩm quyền xóa học viên</span>
+                        <span className="text-[10px] text-slate-400 font-bold">Quản lý tài khoản Phụ huynh học sinh</span>
                       </div>
 
                       <div className="overflow-x-auto">
@@ -1750,9 +1884,9 @@
                           <thead>
                             <tr className="bg-slate-50 border-b border-slate-100 text-[10px] text-slate-400 font-black uppercase">
                               <th className="p-3">Học viên</th>
-                              <th className="p-3">Mã số quân bài</th>
+                              <th className="p-3">Mã số học viên</th>
                               <th className="p-3">Tiểu Đội</th>
-                              <th className="p-3">Liên hệ Phụ Huynh</th>
+                              <th className="p-3">Đăng nhập Phụ Huynh (SĐT / Mật khẩu)</th>
                               <th className="p-3 text-center">Xóa bỏ</th>
                             </tr>
                           </thead>
@@ -1772,6 +1906,9 @@
                                 <td className="p-3 text-[10px] text-slate-500">
                                   <div>📞 {student.parentPhone}</div>
                                   <div className="text-slate-400 mt-0.5">📧 {student.parentEmail}</div>
+                                  <div className="mt-1 font-mono font-bold text-custom-primary bg-emerald-50/70 p-1 rounded w-max border border-emerald-100">
+                                    🔑 MK: {student.parentPassword || createParentPasswordByLogic(student.parentPhone, student.id)}
+                                  </div>
                                 </td>
                                 <td className="p-3 text-center">
                                   <button
@@ -1897,7 +2034,7 @@
             </div>
           </footer>
 
-          {/* ===================== DIALOG XÁC NHẬN AN TOÀN TRƯỚC KHI XÓA NGUYÊN BẢN 100% ===================== */}
+          {/* ===================== DIALOG XÁC NHẬN AN TOÀN TRƯỚC KHI XÓA ===================== */}
           {confirmModal.isOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 animate-fadeIn">
               <div className="absolute inset-0 cursor-zoom-out" onClick={() => setConfirmModal({ isOpen: false, type: '', id: '', message: '' })}></div>
@@ -1937,14 +2074,13 @@
             </div>
           )}
 
-          {/* ===================== MODAL PHÓNG TO VÀ DOWNLOAD TẢI ẢNH NGUYÊN BẢN 100% ===================== */}
+          {/* ===================== MODAL PHÓNG TO VÀ DOWNLOAD TẢI ẢNH ===================== */}
           {zoomedImage && (
             <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-4 animate-fadeIn">
               <div className="absolute inset-0 cursor-zoom-out" onClick={() => setZoomedImage(null)}></div>
               
               <div className="relative max-w-3xl w-full flex flex-col items-center space-y-4 z-10 animate-scaleIn">
                 
-                {/* Khung chứa ảnh lớn */}
                 <div className="bg-slate-900 rounded-2xl overflow-hidden shadow-2xl max-h-[75vh] border border-white/10 flex items-center justify-center">
                   <img 
                     src={zoomedImage.url} 
@@ -1953,7 +2089,6 @@
                   />
                 </div>
 
-                {/* Thanh điều khiển tải ảnh bên dưới */}
                 <div className="bg-slate-900/90 text-white p-4 rounded-2xl border border-white/10 w-full flex flex-col sm:flex-row justify-between items-center gap-3 backdrop-blur-md">
                   <div className="text-left">
                     <span className="text-[9px] bg-custom-accent text-green-950 px-2 py-0.5 rounded font-black uppercase">Ảnh dã ngoại thực tế</span>
@@ -1995,7 +2130,6 @@
 
     // ============================================================================
     // BỘ NẠP MODULE FIREBASE (APP LOADER)
-    // Giúp tải Firebase dạng Module an toàn trong môi trường Babel / Trình duyệt
     // ============================================================================
     function AppLoader() {
       const [firebaseLoaded, setFirebaseLoaded] = React.useState(!!window.fb);
@@ -2027,7 +2161,6 @@
       return <App />;
     }
 
-    // Khởi chạy ứng dụng React
     const container = document.getElementById('root');
     const root = ReactDOM.createRoot(container);
     root.render(<AppLoader />);
