@@ -388,7 +388,7 @@
 
       // Biểu mẫu BCH Tổng thêm học viên mới
       const [newStudentName, setNewStudentName] = useState('');
-      const [newStudentPhone, setNewStudentPhone] = useState('');
+      const [newStudentPhoneState, setNewStudentPhone] = useState('');
       const [newStudentEmail, setNewStudentEmail] = useState('');
       const [newStudentSquad, setNewStudentSquad] = useState(1);
       const [newStudentAvatar, setNewStudentAvatar] = useState('nam.png');
@@ -775,22 +775,33 @@
 
       const handleAddStudentByGeneral = async (e) => {
         e.preventDefault();
-        if (!newStudentName.trim() || !newStudentPhone.trim() || !newStudentEmail.trim()) {
+        if (!newStudentName.trim() || !newStudentPhoneState.trim() || !newStudentEmail.trim()) {
           showToast('Vui lòng điền đầy đủ thông tin học sinh!', 'error');
           return;
         }
 
+        const phoneInput = newStudentPhoneState.trim();
+        const emailInput = newStudentEmail.trim().toLowerCase();
         const newId = `CS${Math.floor(100 + Math.random() * 900)}`;
-        const generatedPassword = createParentPasswordByLogic(newStudentPhone, newId);
+
+        // LOGIC MỚI: Kiểm tra xem có học sinh nào trước đó có cùng SĐT và Email không
+        const existingSibling = students.find(
+          s => s.parentPhone === phoneInput && s.parentEmail.toLowerCase() === emailInput
+        );
+
+        // Nếu có học sinh anh/chị em, dùng lại mật khẩu của người đó. Nếu không thì tạo mới.
+        const finalPassword = existingSibling && existingSibling.parentPassword
+          ? existingSibling.parentPassword
+          : createParentPasswordByLogic(phoneInput, newId);
 
         const newStudentObj = {
           id: newId,
           name: newStudentName.trim(),
           squad: parseInt(newStudentSquad),
           avatar: newStudentAvatar,
-          parentPhone: newStudentPhone.trim(),
-          parentEmail: newStudentEmail.trim().toLowerCase(),
-          parentPassword: generatedPassword
+          parentPhone: phoneInput,
+          parentEmail: emailInput,
+          parentPassword: finalPassword
         };
 
         try {
@@ -798,7 +809,11 @@
           const studentRef = fb.doc(db, basePath, 'students', newId);
           await fb.setDoc(studentRef, newStudentObj);
 
-          showToast(`Đã lưu học sinh ${newStudentObj.name} (Mật khẩu: ${generatedPassword}) lên Cloud!`);
+          if (existingSibling) {
+            showToast(`Đã lưu ${newStudentObj.name} và tự động DÙNG CHUNG mật khẩu với bé ${existingSibling.name}!`);
+          } else {
+            showToast(`Đã lưu học sinh ${newStudentObj.name} (Mật khẩu: ${finalPassword}) lên Cloud!`);
+          }
 
           setNewStudentName('');
           setNewStudentPhone('');
@@ -2036,7 +2051,7 @@
                           type="text"
                           required
                           placeholder="Ví dụ: 0987654321..."
-                          value={newStudentPhone}
+                          value={newStudentPhoneState}
                           onChange={(e) => setNewStudentPhone(e.target.value)}
                           className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800"
                         />
@@ -2056,9 +2071,22 @@
                       </div>
 
                       <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 text-[9px] text-emerald-800 font-semibold space-y-1">
-                        <div>🔒 <strong>Mật khẩu đăng nhập phụ huynh tự tạo:</strong></div>
+                        <div>🔒 <strong>Mật khẩu đăng nhập phụ huynh:</strong></div>
                         <div className="font-mono bg-white p-1 rounded text-center border font-extrabold text-custom-primary text-[10px]">
-                          {newStudentPhone ? createParentPasswordByLogic(newStudentPhone, '(Mã số ID)') : 'Nhập SĐT để xem thử'}
+                          {(() => {
+                            const currentPhone = newStudentPhoneState.trim();
+                            const currentEmail = newStudentEmail.trim().toLowerCase();
+                            
+                            const sibling = students.find(
+                              s => s.parentPhone === currentPhone && s.parentEmail.toLowerCase() === currentEmail
+                            );
+
+                            if (sibling && sibling.parentPassword) {
+                              return `${sibling.parentPassword} (Dùng chung với bé ${sibling.name})`;
+                            }
+                            
+                            return currentPhone ? createParentPasswordByLogic(currentPhone, '(Mã số ID)') : 'Nhập SĐT để xem thử';
+                          })()}
                         </div>
                       </div>
 
@@ -2323,7 +2351,7 @@
                       onClick={() => setZoomedImage(null)}
                       className="flex-1 sm:flex-initial bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl text-xs font-extrabold transition-colors border border-slate-700 active-scale"
                     >
-                      Đóng
+                      Dóng
                     </button>
                   </div>
                 </div>
