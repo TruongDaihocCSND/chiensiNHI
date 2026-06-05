@@ -388,11 +388,11 @@
       const [newImage, setNewImage] = useState('');
       const [customImageFile, setCustomImageFile] = useState(null);
 
-      // Biểu mẫu BCH Tổng thêm học viên mới
+      // Biểu mẫu BCH Tổng thêm/Cập nhật thông tin học viên
+      const [editingStudentId, setEditingStudentId] = useState(null); // Quản lý ID học viên đang sửa đổi
       const [newStudentName, setNewStudentName] = useState('');
       const [newStudentPhoneState, setNewStudentPhone] = useState('');
       const [newStudentEmail, setNewStudentEmail] = useState('');
-      const [newStudentSquad, setNewStudentSquad] = useState(1);
       const [newStudentAvatar, setNewStudentAvatar] = useState('nam.png');
 
       // ----------------------------------------------------------------------
@@ -787,6 +787,50 @@
         }
       };
 
+      // ----------------------------------------------------------------------
+      // BCH TỔNG THAO TÁC CẬP NHẬT TRỰC TIẾP SQUAD (DƯỚI DANH SÁCH BẢNG)
+      // ----------------------------------------------------------------------
+      const handleUpdateStudentSquad = async (studentId, newSquadValue) => {
+        if (!db || !fb) return;
+        const newSquadNum = parseInt(newSquadValue);
+        try {
+          const basePath = `artifacts/${appId}/public/data`;
+          const studentRef = fb.doc(db, basePath, 'students', studentId);
+          await fb.setDoc(studentRef, {
+            squad: newSquadNum
+          }, { merge: true });
+          
+          showToast(`Đã chuyển chiến sĩ sang ${newSquadNum === 0 ? 'Chờ phân đội' : `Tiểu Đội ${newSquadNum}`} thành công!`);
+        } catch (error) {
+          showToast('Lỗi cập nhật tiểu đội lên Cloud!', 'error');
+          console.error(error);
+        }
+      };
+
+      // ----------------------------------------------------------------------
+      // CHUYỂN SANG TRẠNG THÁI SỬA THÔNG TIN CHI TIẾT HỌC VIÊN
+      // ----------------------------------------------------------------------
+      const handleStartEditStudent = (student) => {
+        setEditingStudentId(student.id);
+        setNewStudentName(student.name);
+        setNewStudentPhone(student.parentPhone || '');
+        setNewStudentEmail(student.parentEmail || '');
+        setNewStudentAvatar(student.avatar || 'nam.png');
+        window.scrollTo({ top: 400, behavior: 'smooth' });
+        showToast(`Đã nạp thông tin để sửa học viên: ${student.name}`);
+      };
+
+      // ----------------------------------------------------------------------
+      // HUY BO EDIT HOC VIEN
+      // ----------------------------------------------------------------------
+      const handleCancelEditStudent = () => {
+        setEditingStudentId(null);
+        setNewStudentName('');
+        setNewStudentPhone('');
+        setNewStudentEmail('');
+        setNewStudentAvatar('nam.png');
+      };
+
       const handleAddStudentByGeneral = async (e) => {
         e.preventDefault();
         if (!newStudentName.trim()) {
@@ -803,48 +847,75 @@
           return;
         }
 
-        const newId = `CS${Math.floor(100 + Math.random() * 900)}`;
+        const basePath = `artifacts/${appId}/public/data`;
 
-        // LOGIC CẬP NHẬT: Tìm kiếm anh/chị/em chỉ dựa trên trường thông tin có dữ liệu
-        const existingSibling = students.find(s => {
-          const matchPhone = phoneInput && s.parentPhone && s.parentPhone === phoneInput;
-          const matchEmail = emailInput && s.parentEmail && s.parentEmail.toLowerCase() === emailInput;
-          return matchPhone || matchEmail;
-        });
+        if (editingStudentId) {
+          // THAO TÁC CẬP NHẬT THÔNG TIN HỌC VIÊN ĐÃ CÓ
+          try {
+            const studentRef = fb.doc(db, basePath, 'students', editingStudentId);
+            
+            // Tìm lại password dựa theo logic cũ hoặc giữ lại pass cũ
+            const oldStudentObj = students.find(s => s.id === editingStudentId);
+            const finalPassword = oldStudentObj?.parentPassword || createParentPasswordByLogic(phoneInput || '1234', editingStudentId);
 
-        // Nếu có học sinh anh/chị em, dùng lại mật khẩu của người đó. Nếu không thì tạo mới.
-        const finalPassword = existingSibling && existingSibling.parentPassword
-          ? existingSibling.parentPassword
-          : createParentPasswordByLogic(phoneInput || '1234', newId);
+            await fb.setDoc(studentRef, {
+              name: newStudentName.trim(),
+              avatar: newStudentAvatar,
+              parentPhone: phoneInput,
+              parentEmail: emailInput,
+              parentPassword: finalPassword
+            }, { merge: true });
 
-        const newStudentObj = {
-          id: newId,
-          name: newStudentName.trim(),
-          squad: parseInt(newStudentSquad),
-          avatar: newStudentAvatar,
-          parentPhone: phoneInput, // Có thể để trống nếu không nhập
-          parentEmail: emailInput,   // Có thể để trống nếu không nhập
-          parentPassword: finalPassword
-        };
-
-        try {
-          const basePath = `artifacts/${appId}/public/data`;
-          const studentRef = fb.doc(db, basePath, 'students', newId);
-          await fb.setDoc(studentRef, newStudentObj);
-
-          if (existingSibling) {
-            showToast(`Đã lưu ${newStudentObj.name} và tự động DÙNG CHUNG mật khẩu với chiến sĩ nhí ${existingSibling.name}!`);
-          } else {
-            showToast(`Đã lưu học sinh ${newStudentObj.name} (Mật khẩu: ${finalPassword}) lên Cloud!`);
+            showToast(`Đã lưu thay đổi thông tin học viên ${newStudentName.trim()} thành công!`);
+            handleCancelEditStudent();
+          } catch (error) {
+            showToast('Lỗi khi cập nhật thông tin học viên!', 'error');
+            console.error(error);
           }
+        } else {
+          // THAO TÁC THÊM MỚI HỌC VIÊN (MẶC ĐỊNH LÀ SQUAD 0 - CHỜ PHÂN CHIA SAU)
+          const newId = `CS${Math.floor(100 + Math.random() * 900)}`;
 
-          setNewStudentName('');
-          setNewStudentPhone('');
-          setNewStudentEmail('');
-          setNewStudentAvatar('nam.png');
-        } catch (error) {
-          showToast('Lỗi khi lưu học viên!', 'error');
-          console.error(error);
+          // LOGIC CẬP NHẬT: Tìm kiếm anh/chị/em chỉ dựa trên trường thông tin có dữ liệu
+          const existingSibling = students.find(s => {
+            const matchPhone = phoneInput && s.parentPhone && s.parentPhone === phoneInput;
+            const matchEmail = emailInput && s.parentEmail && s.parentEmail.toLowerCase() === emailInput;
+            return matchPhone || matchEmail;
+          });
+
+          // Nếu có học sinh anh/chị em, dùng lại mật khẩu của người đó. Nếu không thì tạo mới.
+          const finalPassword = existingSibling && existingSibling.parentPassword
+            ? existingSibling.parentPassword
+            : createParentPasswordByLogic(phoneInput || '1234', newId);
+
+          const newStudentObj = {
+            id: newId,
+            name: newStudentName.trim(),
+            squad: 0, // MẶC ĐỊNH LÀ 0 - CHỜ PHÂN CHIA SAU
+            avatar: newStudentAvatar,
+            parentPhone: phoneInput, 
+            parentEmail: emailInput,   
+            parentPassword: finalPassword
+          };
+
+          try {
+            const studentRef = fb.doc(db, basePath, 'students', newId);
+            await fb.setDoc(studentRef, newStudentObj);
+
+            if (existingSibling) {
+              showToast(`Đã lưu ${newStudentObj.name} và tự động DÙNG CHUNG mật khẩu với chiến sĩ nhí ${existingSibling.name}!`);
+            } else {
+              showToast(`Đã thêm học sinh ${newStudentObj.name} (Mật khẩu: ${finalPassword}) - Trạng thái: Chờ phân tiểu đội!`);
+            }
+
+            setNewStudentName('');
+            setNewStudentPhone('');
+            setNewStudentEmail('');
+            setNewStudentAvatar('nam.png');
+          } catch (error) {
+            showToast('Lỗi khi lưu học viên!', 'error');
+            console.error(error);
+          }
         }
       };
 
@@ -869,6 +940,9 @@
           });
 
           showToast('Đã xóa vĩnh viễn học viên và nhật ký liên quan.');
+          if (editingStudentId === id) {
+            handleCancelEditStudent();
+          }
         } catch (error) {
           showToast('Lỗi khi thực hiện xóa học viên!', 'error');
         }
@@ -930,6 +1004,7 @@
         setNewActivity('');
         setNewComment('');
         setViewingStudent(null);
+        handleCancelEditStudent();
         showToast('Đã đăng xuất tài khoản an toàn.');
       };
 
@@ -1226,7 +1301,7 @@
                           <div className="text-left">
                             <div className="font-extrabold text-[11px] sm:text-xs">{child.name}</div>
                             <div className={`text-[8px] sm:text-[9px] font-semibold ${isSelected ? 'text-custom-accent' : 'text-slate-400'}`}>
-                              Mã: {child.id} • Tiểu Đội {child.squad}
+                              Mã: {child.id} • {child.squad ? `Tiểu Đội ${child.squad}` : 'Chờ xếp tiểu đội ⚠️'}
                             </div>
                           </div>
                         </button>
@@ -1266,7 +1341,9 @@
                         <div className="space-y-2 text-[11px] md:text-xs font-semibold">
                           <div className="flex justify-between border-b border-white/5 pb-1">
                             <span className="text-green-200">Đơn vị:</span>
-                            <span className="text-custom-accent font-extrabold">Tiểu Đội {selectedChild.squad}</span>
+                            <span className="text-custom-accent font-extrabold">
+                              {selectedChild.squad ? `Tiểu Đội ${selectedChild.squad}` : 'Chờ xếp tiểu đội ⚠️'}
+                            </span>
                           </div>
                           <div className="flex justify-between border-b border-white/5 pb-1">
                             <span className="text-green-200">Trạng thái rèn luyện:</span>
@@ -1274,7 +1351,9 @@
                           </div>
                           <div className="flex justify-between">
                             <span className="text-green-200">Kênh bảo mật đơn vị:</span>
-                            <span className="text-slate-300 font-mono">{squadCodes[selectedChild.squad] || `TD-${selectedChild.squad}`}</span>
+                            <span className="text-slate-300 font-mono">
+                              {selectedChild.squad ? (squadCodes[selectedChild.squad] || `TD-${selectedChild.squad}`) : 'CHƯA CÓ'}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -1296,7 +1375,7 @@
                       // Gộp nhận xét cá nhân của chiến sĩ nhí và nhận xét chung ('COMMON') thuộc tiểu đội của chiến sĩ nhí
                       const filteredReports = reports.filter(r => 
                         r.studentId === selectedChild.id || 
-                        (r.studentId === 'COMMON' && r.squad === selectedChild.squad)
+                        (r.studentId === 'COMMON' && selectedChild.squad && r.squad === selectedChild.squad)
                       );
 
                       if (filteredReports.length === 0) {
@@ -2018,8 +2097,12 @@
                   <div className="lg:col-span-4">
                     <form onSubmit={handleAddStudentByGeneral} className="bg-white rounded-2xl shadow p-4 md:p-5 border border-slate-100 space-y-3.5">
                       <div className="border-b border-slate-100 pb-2">
-                        <span className="text-[9px] text-green-700 font-black uppercase tracking-wider block">Thao Tác Nghiệp Vụ</span>
-                        <h3 className="text-xs md:text-sm font-black text-slate-800">Thêm & Chỉ Định Học Viên</h3>
+                        <span className="text-[9px] text-green-700 font-black uppercase tracking-wider block">
+                          {editingStudentId ? 'CẬP NHẬT THÔNG TIN HỌC VIÊN' : 'THÊM MỚI CHIẾN SĨ'}
+                        </span>
+                        <h3 className="text-xs md:text-sm font-black text-slate-800">
+                          {editingStudentId ? `Sửa Học Viên: ${editingStudentId}` : 'Nhập Thông Tin Chiến Sĩ Nhí'}
+                        </h3>
                       </div>
 
                       {/* Họ Tên học viên */}
@@ -2031,35 +2114,21 @@
                           placeholder="Ví dụ: Nguyễn Hữu Đạt..."
                           value={newStudentName}
                           onChange={(e) => setNewStudentName(e.target.value)}
-                          className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800"
+                          className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 bg-slate-50"
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 gap-3">
                         {/* Chọn Giới Tính */}
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Giới tính</label>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Giới tính (Ảnh Đại Diện)</label>
                           <select
                             value={newStudentAvatar}
                             onChange={(e) => setNewStudentAvatar(e.target.value)}
-                            className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800"
+                            className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 bg-slate-50"
                           >
                             <option value="nam.png">Nam (nam.png)</option>
                             <option value="nu.png">Nữ (nu.png)</option>
-                          </select>
-                        </div>
-
-                        {/* Chỉ định tiểu đội rèn luyện */}
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Tiểu Đội biên chế</label>
-                          <select
-                            value={newStudentSquad}
-                            onChange={(e) => setNewStudentSquad(parseInt(e.target.value))}
-                            className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800"
-                          >
-                            {Array.from({ length: squadCount }, (_, i) => i + 1).map((num) => (
-                              <option key={num} value={num}>Tiểu Đội {num}</option>
-                            ))}
                           </select>
                         </div>
                       </div>
@@ -2072,7 +2141,7 @@
                           placeholder="Ví dụ: 0987654321"
                           value={newStudentPhoneState}
                           onChange={(e) => setNewStudentPhone(e.target.value)}
-                          className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800"
+                          className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 bg-slate-50"
                         />
                       </div>
 
@@ -2084,7 +2153,7 @@
                           placeholder="Ví dụ: phuhuynh@gmail.com (Nếu có)"
                           value={newStudentEmail}
                           onChange={(e) => setNewStudentEmail(e.target.value)}
-                          className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800"
+                          className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 bg-slate-50"
                         />
                       </div>
 
@@ -2110,18 +2179,29 @@
                               return `${sibling.parentPassword} (Dùng chung with chiến sĩ nhí ${sibling.name})`;
                             }
                             
-                            return createParentPasswordByLogic(currentPhone || '1234', '(Mã số ID)');
+                            return createParentPasswordByLogic(currentPhone || '1234', editingStudentId || '(Mã số ID)');
                           })()}
                         </div>
                       </div>
 
-                      <button
-                        type="submit"
-                        className="w-full bg-custom-primary hover:bg-custom-primary-light text-white font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider shadow transition-all flex items-center justify-center gap-1.5 active-scale"
-                      >
-                        <Plus />
-                        <span>Đồng Bộ Học Viên Mới</span>
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          className="flex-1 bg-custom-primary hover:bg-custom-primary-light text-white font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider shadow transition-all flex items-center justify-center gap-1.5 active-scale"
+                        >
+                          {editingStudentId ? <CheckCircle className="w-4 h-4" /> : <Plus />}
+                          <span>{editingStudentId ? 'Lưu Thay Đổi' : 'Đăng Ký Học Viên'}</span>
+                        </button>
+                        {editingStudentId && (
+                          <button
+                            type="button"
+                            onClick={handleCancelEditStudent}
+                            className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 rounded-xl text-xs font-bold border border-slate-300 active-scale"
+                          >
+                            Hủy
+                          </button>
+                        )}
+                      </div>
 
                     </form>
                   </div>
@@ -2130,8 +2210,8 @@
                   <div className="lg:col-span-8">
                     <div className="bg-white rounded-2xl shadow p-4 md:p-5 border border-slate-100 space-y-4">
                       <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                        <h3 className="text-xs font-black text-slate-700 tracking-wider uppercase">Danh Sách Học Viên Toàn Khỏa</h3>
-                        <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">Quản lý trực tiếp trên Đám Mây</span>
+                        <h3 className="text-xs font-black text-slate-700 tracking-wider uppercase">Danh Sách Học Viên Toàn Khóa</h3>
+                        <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">Phân chia tiểu đội nhanh tại bảng</span>
                       </div>
 
                       <div className="overflow-x-auto -mx-4 sm:mx-0">
@@ -2141,7 +2221,7 @@
                               <tr className="bg-slate-50 text-[9px] md:text-[10px] text-slate-400 font-black uppercase text-left">
                                 <th className="p-3">Học viên</th>
                                 <th className="p-3">Mã số</th>
-                                <th className="p-3">Tiểu Đội</th>
+                                <th className="p-3">Xếp Tiểu Đội</th>
                                 <th className="p-3">Đăng nhập Phụ Huynh</th>
                                 <th className="p-3 text-center">Tác vụ</th>
                               </tr>
@@ -2166,9 +2246,17 @@
                                   </td>
                                   <td className="p-3 font-mono font-bold text-slate-400">{student.id}</td>
                                   <td className="p-3">
-                                    <span className="bg-yellow-100 text-yellow-950 font-bold px-2 py-0.5 rounded-full text-[8px] md:text-[9px]">
-                                      Tiểu Đội {student.squad}
-                                    </span>
+                                    {/* DROPDOWN CHỌN PHÂN CHIA SQUAD TIỂU ĐỘI TRỰC TIẾP */}
+                                    <select
+                                      value={student.squad || 0}
+                                      onChange={(e) => handleUpdateStudentSquad(student.id, e.target.value)}
+                                      className="p-2 bg-slate-50 border border-slate-300 rounded-xl text-[11px] font-extrabold text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:bg-white transition-all shadow-sm"
+                                    >
+                                      <option value={0} className="text-red-500 font-semibold">⚠️ Chờ phân tiểu đội</option>
+                                      {Array.from({ length: squadCount }, (_, i) => i + 1).map((num) => (
+                                        <option key={num} value={num}>Tiểu Đội {num}</option>
+                                      ))}
+                                    </select>
                                   </td>
                                   <td className="p-3 text-[10px] text-slate-500 space-y-0.5">
                                     {student.parentPhone && <div>📞 {student.parentPhone}</div>}
@@ -2178,13 +2266,22 @@
                                     </div>
                                   </td>
                                   <td className="p-3 text-center">
-                                    <button
-                                      onClick={() => handleDeleteStudent(student.id)}
-                                      className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-xl transition-colors border border-red-200/50 inline-flex items-center justify-center active-scale"
-                                      title="Xóa học viên vĩnh viễn"
-                                    >
-                                      <Trash />
-                                    </button>
+                                    <div className="flex gap-1.5 justify-center">
+                                      <button
+                                        onClick={() => handleStartEditStudent(student)}
+                                        className="bg-amber-50 hover:bg-amber-100 text-amber-700 p-2 rounded-xl transition-colors border border-amber-200 inline-flex items-center justify-center active-scale"
+                                        title="Sửa thông tin học viên"
+                                      >
+                                        ✏️
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteStudent(student.id)}
+                                        className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-xl transition-colors border border-red-200/50 inline-flex items-center justify-center active-scale"
+                                        title="Xóa học viên vĩnh viễn"
+                                      >
+                                        <Trash />
+                                      </button>
+                                    </div>
                                   </td>
                                 </tr>
                               ))}
@@ -2320,7 +2417,7 @@
                      <div className="text-white">
                         <span className="bg-custom-accent text-green-950 text-[8px] md:text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider">Hồ Sơ Rèn Luyện</span>
                         <h3 className="text-base md:text-xl font-black mt-1 leading-tight">{viewingStudent.name}</h3>
-                        <p className="text-[10px] md:text-xs text-emerald-200 font-medium">Mã: {viewingStudent.id} • Tiểu Đội {viewingStudent.squad}</p>
+                        <p className="text-[10px] md:text-xs text-emerald-200 font-medium">Mã: {viewingStudent.id} • {viewingStudent.squad ? `Tiểu Đội ${viewingStudent.squad}` : 'Chờ phân tiểu đội ⚠️'}</p>
                      </div>
                    </div>
                    <button 
@@ -2336,7 +2433,7 @@
                   {(() => {
                     const studentReports = reports.filter(r => 
                       r.studentId === viewingStudent.id || 
-                      (r.studentId === 'COMMON' && r.squad === viewingStudent.squad)
+                      (r.studentId === 'COMMON' && viewingStudent.squad && r.squad === viewingStudent.squad)
                     );
 
                     if (studentReports.length === 0) {
