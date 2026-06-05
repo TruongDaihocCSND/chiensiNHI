@@ -395,6 +395,8 @@
       const [newStudentEmail, setNewStudentEmail] = useState('');
       const [newStudentAvatar, setNewStudentAvatar] = useState('nam.png');
 
+      const [searchTerm, setSearchTerm] = useState('');
+
       // ----------------------------------------------------------------------
       // BỘ CHUYỂN ĐỔI LIÊN KẾT GOOGLE DRIVE THÀNH LIÊN KẾT HIỂN THỊ ẢNH TRỰC TIẾP
       // ----------------------------------------------------------------------
@@ -550,6 +552,17 @@
         setToast({ message, type });
         setTimeout(() => setToast(null), 3500);
       };
+
+      const filteredStudents = students.filter(s => {
+        const term = searchTerm.toLowerCase().trim();
+        if (!term) return true;
+        return (
+          s.name.toLowerCase().includes(term) ||
+          s.id.toLowerCase().includes(term) ||
+          (s.parentPhone && s.parentPhone.includes(term)) ||
+          (s.parentEmail && s.parentEmail.toLowerCase().includes(term))
+        );
+      });
 
       const handleParentLogin = (e) => {
         e.preventDefault();
@@ -2226,160 +2239,120 @@
                   {}
                   {/* DANH SÁCH HỌC VIÊN TOÀN KHÓA HỌC */}
                   <div className="lg:col-span-8">
-                    <div className="bg-white rounded-2xl shadow p-4 md:p-6 border border-slate-100 space-y-4">
+                    <div className="bg-white rounded-2xl shadow p-4 md:p-5 border border-slate-100 space-y-4">
                       <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                         <h3 className="text-xs font-black text-slate-700 tracking-wider uppercase">Danh Sách Học Viên Toàn Khóa</h3>
-                        <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">Tối ưu thao tác trên PC & Di động</span>
+                        <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">Phân chia tiểu đội nhanh tại bảng</span>
                       </div>
 
-                      {/* --- PHÂN DIỆN 1: HIỂN THỊ DẠNG THẺ (CARDS) TRÊN MOBILE --- */}
-                      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:hidden">
-                        {students.map((student) => (
-                          <div key={student.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col justify-between space-y-3.5 shadow-sm">
-                            <div className="flex items-start gap-3">
-                              <span 
-                                onClick={() => setViewingStudent(student)}
-                                className="w-12 h-12 rounded-full overflow-hidden bg-slate-100 shrink-0 border border-slate-200 shadow-inner cursor-pointer block"
-                              >
-                                <RenderAvatar avatar={student.avatar} className="w-full h-full object-cover" />
-                              </span>
-                              <div className="space-y-1">
-                                <h4 
-                                  onClick={() => setViewingStudent(student)}
-                                  className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5 cursor-pointer hover:text-custom-primary"
-                                >
-                                  <span>{student.name}</span>
-                                  <span className="text-[9px] text-slate-400 font-mono">({student.id})</span>
-                                </h4>
-                                <div className="text-[10px] text-slate-500 font-medium space-y-0.5">
-                                  {student.parentPhone && <div>📞 {student.parentPhone}</div>}
-                                  {student.parentEmail && <div className="text-slate-400 break-all">📧 {student.parentEmail}</div>}
-                                </div>
-                              </div>
-                            </div>
-
-                            <hr className="border-slate-200" />
-
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              {/* Chọn Tiểu Đội Mobile */}
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[9px] font-black text-slate-400 uppercase">Tiểu đội:</span>
-                                <select
-                                  value={student.squad || 0}
-                                  onChange={(e) => handleUpdateStudentSquad(student.id, e.target.value)}
-                                  className="p-1.5 bg-white border border-slate-300 rounded-lg text-[10px] font-extrabold text-slate-700 focus:outline-none focus:ring-1 focus:ring-green-600 transition-all shadow-sm"
-                                >
-                                  <option value={0}>⚠️ Chờ xếp</option>
-                                  {Array.from({ length: squadCount }, (_, i) => i + 1).map((num) => (
-                                    <option key={num} value={num}>Tiểu Đội {num}</option>
-                                  ))}
-                                </select>
-                              </div>
-
-                              {/* Mật khẩu */}
-                              <div className="font-mono font-bold text-custom-primary bg-emerald-50/70 px-2 py-0.5 rounded border border-emerald-100 text-[9px]">
-                                MK: {student.parentPassword || createParentPasswordByLogic(student.parentPhone || '1234', student.id)}
-                              </div>
-                            </div>
-
-                            {/* Các nút Tác vụ Mobile */}
-                            <div className="flex gap-2 pt-1 border-t border-slate-200/50">
-                              <button
-                                onClick={() => setViewingStudent(student)}
-                                className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold py-2 rounded-xl text-[10px] border border-emerald-200 flex items-center justify-center gap-1 active-scale transition-colors"
-                              >
-                                👁️ Xem Hồ Sơ
-                              </button>
-                              <button
-                                onClick={() => handleStartEditStudent(student)}
-                                className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold py-2 rounded-xl text-[10px] border border-amber-200 flex items-center justify-center gap-1 active-scale transition-colors"
-                              >
-                                ✏️ Sửa SĐT
-                              </button>
-                              <button
-                                onClick={() => handleDeleteStudent(student.id)}
-                                className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-xl border border-red-200 inline-flex items-center justify-center active-scale transition-colors"
-                              >
-                                <Trash />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                      {}
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                        </span>
+                        <input
+                          type="text"
+                          placeholder="Tìm kiếm tên chiến sĩ nhí, mã số, SĐT phụ huynh..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all h-10"
+                        />
+                        {searchTerm && (
+                          <button
+                            type="button"
+                            onClick={() => setSearchTerm('')}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 text-lg font-bold"
+                          >
+                            &times;
+                          </button>
+                        )}
                       </div>
 
-                      {/* --- PHÂN DIỆN 2: HIỂN THỊ DẠNG BẢNG RỘNG RÃI TRÊN PC (DESKTOP) --- */}
-                      <div className="hidden lg:block overflow-x-auto">
-                        <table className="min-w-full divide-y divide-slate-100 text-xs">
-                          <thead>
-                            <tr className="bg-slate-50 text-[10px] text-slate-400 font-black uppercase text-left">
-                              <th className="p-3.5">Học viên</th>
-                              <th className="p-3.5">Mã số</th>
-                              <th className="p-3.5">Xếp Tiểu Đội</th>
-                              <th className="p-3.5">Đăng nhập Phụ Huynh</th>
-                              <th className="p-3.5 text-center">Tác vụ</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                            {students.map((student) => (
-                              <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="p-3.5">
-                                  <div 
-                                    onClick={() => setViewingStudent(student)}
-                                    className="flex items-center gap-3 cursor-pointer group hover:bg-slate-100 p-1.5 -ml-1.5 rounded-xl transition-colors w-max"
-                                    title="Nhấn để xem toàn bộ nhật ký rèn luyện"
-                                  >
-                                    <span className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 shrink-0 shadow-sm border border-transparent group-hover:border-custom-primary transition-all">
-                                      <RenderAvatar avatar={student.avatar} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                                    </span>
-                                    <div className="flex flex-col">
-                                      <span className="font-extrabold text-slate-800 text-xs group-hover:text-custom-primary transition-colors">{student.name}</span>
-                                      <span className="text-[9px] text-custom-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity">👁️ Xem hồ sơ</span>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="p-3.5 font-mono font-bold text-slate-400">{student.id}</td>
-                                <td className="p-3.5">
-                                  {/* DROPDOWN CHỌN PHÂN CHIA SQUAD TIỂU ĐỘI TRỰC TIẾP */}
-                                  <select
-                                    value={student.squad || 0}
-                                    onChange={(e) => handleUpdateStudentSquad(student.id, e.target.value)}
-                                    className="p-2 bg-slate-50 border border-slate-300 rounded-xl text-[11px] font-extrabold text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:bg-white transition-all shadow-sm"
-                                  >
-                                    <option value={0} className="text-red-500 font-semibold">⚠️ Chờ phân tiểu đội</option>
-                                    {Array.from({ length: squadCount }, (_, i) => i + 1).map((num) => (
-                                      <option key={num} value={num}>Tiểu Đội {num}</option>
-                                    ))}
-                                  </select>
-                                </td>
-                                <td className="p-3.5 text-[10px] text-slate-500 space-y-0.5">
-                                  {student.parentPhone && <div>📞 {student.parentPhone}</div>}
-                                  {student.parentEmail && <div className="text-slate-400 break-all">📧 {student.parentEmail}</div>}
-                                  <div className="mt-1 font-mono font-bold text-custom-primary bg-emerald-50/70 px-1.5 py-0.5 rounded w-max border border-emerald-100 text-[9px]">
-                                    🔑 MK: {student.parentPassword || createParentPasswordByLogic(student.parentPhone || '1234', student.id)}
-                                  </div>
-                                </td>
-                                <td className="p-3.5 text-center">
-                                  <div className="flex gap-2 justify-center">
-                                    <button
-                                      onClick={() => handleStartEditStudent(student)}
-                                      className="bg-amber-50 hover:bg-amber-100 text-amber-700 p-2 rounded-xl transition-colors border border-amber-200 inline-flex items-center justify-center active-scale shadow-sm"
-                                      title="Sửa thông tin học viên"
-                                    >
-                                      ✏️ Sửa
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteStudent(student.id)}
-                                      className="bg-red-50 hover:bg-red-100 text-red-600 p-2.5 rounded-xl transition-colors border border-red-200/50 inline-flex items-center justify-center active-scale shadow-sm"
-                                      title="Xóa học viên vĩnh viễn"
-                                    >
-                                      <Trash />
-                                    </button>
-                                  </div>
-                                </td>
+                      <div className="overflow-x-auto -mx-4 sm:mx-0">
+                        <div className="inline-block min-w-full align-middle px-4 sm:px-0">
+                          <table className="min-w-full divide-y divide-slate-100 text-xs">
+                            <thead>
+                              <tr className="bg-slate-50 text-[9px] md:text-[10px] text-slate-400 font-black uppercase text-left">
+                                <th className="p-3">Học viên</th>
+                                <th className="p-3">Mã số</th>
+                                <th className="p-3">Xếp Tiểu Đội</th>
+                                <th className="p-3">Đăng nhập Phụ Huynh</th>
+                                <th className="p-3 text-center">Tác vụ</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                              {}
+                              {filteredStudents.length === 0 ? (
+                                <tr>
+                                  <td colSpan="5" className="p-8 text-center text-slate-400 font-bold italic">
+                                    ❌ Không tìm thấy chiến sĩ nhí tương ứng với từ khóa tìm kiếm!
+                                  </td>
+                                </tr>
+                              ) : (
+                                filteredStudents.map((student) => (
+                                  <tr key={student.id} className="hover:bg-slate-50/50">
+                                    <td className="p-3">
+                                      <div 
+                                        onClick={() => setViewingStudent(student)}
+                                        className="flex items-center gap-2 cursor-pointer group hover:bg-slate-100 p-1.5 -ml-1.5 rounded-lg transition-colors w-max"
+                                        title="Nhấn để xem toàn bộ nhật ký rèn luyện"
+                                      >
+                                        <span className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 shrink-0 shadow-sm border border-transparent group-hover:border-custom-primary transition-colors">
+                                          <RenderAvatar avatar={student.avatar} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                        </span>
+                                        <div className="flex flex-col">
+                                          <span className="font-extrabold text-slate-800 text-[11px] sm:text-xs group-hover:text-custom-primary transition-colors">{student.name}</span>
+                                          <span className="text-[9px] text-custom-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity">👁️ Xem hồ sơ</span>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="p-3 font-mono font-bold text-slate-400">{student.id}</td>
+                                    <td className="p-3">
+                                      {/* DROPDOWN CHỌN PHÂN CHIA SQUAD TIỂU ĐỘI TRỰC TIẾP */}
+                                      <select
+                                        value={student.squad || 0}
+                                        onChange={(e) => handleUpdateStudentSquad(student.id, e.target.value)}
+                                        className="p-2 bg-slate-50 border border-slate-300 rounded-xl text-[11px] font-extrabold text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:bg-white transition-all shadow-sm"
+                                      >
+                                        <option value={0} className="text-red-500 font-semibold">⚠️ Chờ phân tiểu đội</option>
+                                        {Array.from({ length: squadCount }, (_, i) => i + 1).map((num) => (
+                                          <option key={num} value={num}>Tiểu Đội {num}</option>
+                                        ))}
+                                      </select>
+                                    </td>
+                                    <td className="p-3 text-[10px] text-slate-500 space-y-0.5">
+                                      {student.parentPhone && <div>📞 {student.parentPhone}</div>}
+                                      {student.parentEmail && <div className="text-slate-400 break-all">📧 {student.parentEmail}</div>}
+                                      <div className="mt-1 font-mono font-bold text-custom-primary bg-emerald-50/70 px-1.5 py-0.5 rounded w-max border border-emerald-100 text-[8px] md:text-[9px]">
+                                        🔑 MK: {student.parentPassword || createParentPasswordByLogic(student.parentPhone || '1234', student.id)}
+                                      </div>
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      <div className="flex gap-1.5 justify-center">
+                                        <button
+                                          onClick={() => handleStartEditStudent(student)}
+                                          className="bg-amber-50 hover:bg-amber-100 text-amber-700 p-2 rounded-xl transition-colors border border-amber-200 inline-flex items-center justify-center active-scale"
+                                          title="Sửa thông tin học viên"
+                                        >
+                                          ✏️
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteStudent(student.id)}
+                                          className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-xl transition-colors border border-red-200/50 inline-flex items-center justify-center active-scale"
+                                          title="Xóa học viên vĩnh viễn"
+                                        >
+                                          <Trash />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
                   </div>
