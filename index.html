@@ -819,7 +819,7 @@
           await fb.setDoc(studentRef, newStudentObj);
 
           if (existingSibling) {
-            showToast(`Đã lưu ${newStudentObj.name} và tự động DÙNG CHUNG mật khẩu với bé ${existingSibling.name}!`);
+            showToast(`Đã lưu ${newStudentObj.name} và tự động DÙNG CHUNG mật khẩu với chiến sĩ nhí ${existingSibling.name}!`);
           } else {
             showToast(`Đã lưu học sinh ${newStudentObj.name} (Mật khẩu: ${finalPassword}) lên Cloud!`);
           }
@@ -950,7 +950,7 @@
                     Sổ Liên Lạc Chương Trình Trải Nghiệm  "Chiến Sĩ Công An Nhí"
                   </h1>
                   <span className="text-[8px] md:text-[10px] font-semibold tracking-widest text-custom-accent block uppercase mt-0.5">
-                    Trường Đại Học CSND
+                    Trường Đại Học Cảnh sát nhân dân
                   </span>
                 </div>
               </div>
@@ -974,7 +974,7 @@
                 )}
                 {!role && (
                   <span className="text-[8px] md:text-[10px] font-black uppercase tracking-wider bg-black/25 text-emerald-300 px-2.5 py-1.5 rounded-lg border border-green-800">
-                    Học Kỷ Năng Sống • Kỹ Năng Tự Lập • Kỹ Năng An Toàn
+                    Học Kỹ Năng Sống • Kỹ Năng Tự Lập • Kỹ Năng An Toàn
                   </span>
                 )}
               </div>
@@ -1001,7 +1001,7 @@
                       Rèn Đức Luyện Tài - Sẵn Sàng Học Tập!
                     </h2>
                     <p className="text-xs md:text-sm text-emerald-100/90 leading-relaxed font-medium">
-                      Chào mừng quý phụ huynh và các đồng chí. Đây là hệ thống sổ liên lạc điện tử của chương trình trải nghiệm "Chiến sĩ Công an nhí" năm 2026 tại trường Đại học Cảnh sát Nhân dân.
+                      Chào mừng quý phụ huynh và các đồng chí. Đây là hệ thống sổ liên lạc điện tử của chương trình trải nghiệm "Chiến sĩ Công an nhí" năm 2026 tại Trường Đại học Cảnh sát nhân dân.
                     </p>
                   </div>
 
@@ -1066,7 +1066,7 @@
                           </div>
                           <div>
                             <h3 className="text-base md:text-lg font-extrabold text-slate-800">Cổng Phụ Huynh Học Viên</h3>
-                            <p className="text-[11px] md:text-xs text-slate-400 font-medium">Theo dõi rèn luyện, nề nếp và tác phong sinh hoạt hằng ngày.</p>
+                            <p className="text-[11px] md:text-xs text-slate-400 font-medium">Theo dõi rèn luyện, nền nếp và tác phong sinh hoạt hằng ngày.</p>
                           </div>
                         </div>
                         <hr className="border-slate-100" />
@@ -1180,7 +1180,7 @@
                       </div>
 
                       <div className="mt-5 bg-yellow-50/70 p-3 rounded-xl border border-yellow-100 text-[10px] text-amber-800 leading-relaxed font-semibold">
-                        🛡️ <strong>Bảo mật:</strong> Chỉ Huy Tiểu Đội sử dụng mã đơn vị tương ứng kèm mật khẩu được cấp bởi Ban Chỉ Huy Tổng.
+                        🛡️ <strong>Bảo mật:</strong> Tình nguyện viên sử dụng mã đơn vị tương ứng kèm mật khẩu do Ban tổ chức cung cấp.
                       </div>
                     </div>
 
@@ -1240,7 +1240,7 @@
                 {/* Học bạ chi tiết của cháu được chọn */}
                 <div className="grid lg:grid-cols-12 gap-5 md:gap-6">
                   
-                  {/* Cột trái: Thẻ ID dã chiến của bé */}
+                  {/* Cột trái: Thẻ ID dã chiến của chiến sĩ nhí */}
                   <div className="lg:col-span-4">
                     <div className="bg-gradient-to-b from-green-900 to-green-950 text-white rounded-2xl md:rounded-3xl p-5 md:p-6 shadow-lg border-b-4 border-custom-accent relative overflow-hidden flex flex-col justify-between min-h-[250px] md:min-h-[300px]">
                       <div className="absolute top-0 right-0 -mr-12 -mt-12 w-40 h-40 bg-white/5 rounded-full pointer-events-none"></div>
@@ -1295,7 +1295,7 @@
                     </h3>
 
                     {(() => {
-                      // Gộp nhận xét cá nhân của bé và nhận xét chung ('COMMON') thuộc tiểu đội của bé
+                      // Gộp nhận xét cá nhân của chiến sĩ nhí và nhận xét chung ('COMMON') thuộc tiểu đội của chiến sĩ nhí
                       const filteredReports = reports.filter(r => 
                         r.studentId === selectedChild.id || 
                         (r.studentId === 'COMMON' && r.squad === selectedChild.squad)
@@ -1704,7 +1704,7 @@
                         {/* Văn bản Nhận xét */}
                         <div>
                           <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wide mb-1">
-                            {selectedStudent.id === 'COMMON' ? 'Nội dung thông báo chung' : 'Nội dung nhận xét chi tiết của bé'}
+                            {selectedStudent.id === 'COMMON' ? 'Nội dung thông báo chung' : 'Nội dung nhận xét chi tiết của chiến sĩ nhí'}
                           </label>
                           <textarea
                             rows="3"
@@ -1879,7 +1879,7 @@
 
                   <div className="flex gap-2 flex-wrap w-full md:w-auto">
                     <span className="bg-black/30 px-3 py-2 rounded-xl text-[10px] md:text-xs border border-white/5 font-semibold">
-                      Tổng số: <strong className="text-custom-accent">{students.length} Bé</strong>
+                      Tổng số: <strong className="text-custom-accent">{students.length} chiến sĩ nhí</strong>
                     </span>
                     <span className="bg-black/30 px-3 py-2 rounded-xl text-[10px] md:text-xs border border-white/5 font-semibold">
                       Báo cáo: <strong className="text-custom-accent">{reports.length} Nhật ký</strong>
@@ -2094,7 +2094,7 @@
                             });
 
                             if (sibling && sibling.parentPassword) {
-                              return `${sibling.parentPassword} (Dùng chung với bé ${sibling.name})`;
+                              return `${sibling.parentPassword} (Dùng chung với chiến sĩ nhí ${sibling.name})`;
                             }
                             
                             return createParentPasswordByLogic(currentPhone || '1234', '(Mã số ID)');
@@ -2263,15 +2263,15 @@
                   <span className="font-black uppercase tracking-wider text-[11px] md:text-sm">Chiến Sĩ Công An Nhí</span>
                 </div>
                 <p className="leading-relaxed text-slate-500 font-semibold text-[10px] md:text-[11px]">
-                  Chương trình phối hợp giáo dục thực tế quốc phòng, kỹ năng sống và kỷ luật quân đội nhân dân dành riêng cho học sinh từ 9 đến 15 tuổi, bồi dưỡng lòng yêu Tổ quốc và sống tự lập.
+                  Chương trình “Chiến sĩ Công an nhí” năm 2026 chính thức mở đăng ký, hứa hẹn mang đến môi trường rèn luyện kỷ luật, kỹ năng sống cùng nhiều hoạt động trải nghiệm thực tế hấp dẫn dành cho các em thiếu nhi.
                 </p>
               </div>
               <div className="space-y-2 text-[10px] md:text-[11px] font-semibold">
                 <h4 className="text-white font-bold uppercase tracking-wide">Đường Dây Nóng Hỗ Trợ</h4>
                 <div className="space-y-1 text-slate-500">
                   <p>📞 Điện thoại hỗ trợ: 0911.099.798 ( đ/c Hoài Nam)</p>
-                  <p>📧 Email liên hệ: contact@dhcsnd.bocongan.gov.vn</p>
-                  <p>📍 Địa điểm: Trường Đại học CSND, 36 Nguyễn Hữu Thọ, Phường Tân Hưng, TP.HCM.</p>
+                  <p>📧 Email liên hệ: doanthanhnien@dhcsnd.bocongan.gov.vn</p>
+                  <p>📍 Địa điểm: Trường Đại học CSND, 36 Nguyễn Hữu Thọ, Phường Tân Hưng, Thành phố Hồ Chí Minh.</p>
                 </div>
               </div>
               <div className="space-y-2 text-[10px] md:text-[11px] font-semibold">
