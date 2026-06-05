@@ -894,9 +894,10 @@
       const handleStartEditReport = (report) => {
         let student = null;
         if (report.studentId === 'COMMON') {
-          student = { id: 'COMMON', name: 'Nhận xét Chung Toàn Tiểu Đội', squad: report.squad };
+          student = { id: 'COMMON', name: `Nhận xét Chung Toàn Tiểu Đội ${report.squad}`, squad: report.squad };
         } else {
-          student = students.find(s => s.id === report.studentId);
+          // BỔ SUNG: Nếu không tìm thấy học viên do cơ sở dữ liệu đồng bộ chậm hoặc đã bị thay đổi, khởi tạo học viên dự phòng giúp Modal Chỉnh sửa luôn được phép mở
+          student = students.find(s => s.id === report.studentId) || { id: report.studentId, name: `Chiến sĩ (${report.studentId})`, squad: report.squad };
         }
         
         setSelectedStudent(student);
@@ -1328,11 +1329,11 @@
                                 {report.image && (
                                   <div className="w-full sm:w-48 md:w-56 h-40 sm:h-auto relative bg-slate-100 flex-shrink-0 overflow-hidden group">
                                     <img 
-                                      src={report.image} 
+                                      src={parseAndConvertDriveUrl(report.image)} 
                                       alt="Ảnh rèn luyện" 
                                       className="w-full h-full object-cover cursor-zoom-in group-hover:scale-105 transition-all duration-300"
                                       onClick={() => setZoomedImage({
-                                        url: report.image,
+                                        url: parseAndConvertDriveUrl(report.image),
                                         title: isCommon 
                                           ? `[HÌNH CHUNG TIỂU ĐỘI ${report.squad}] - Hoạt động: ${report.activity} (${report.date})`
                                           : `${selectedChild.name} - Hoạt động: ${report.activity} (${report.date})`
@@ -1640,26 +1641,60 @@
                           </div>
                         )}
 
-                        {/* CHỈ GIỮ LẠI ĐƯỜNG DẪN ẢNH GOOGLE DRIVE */}
-                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2.5">
-                          <label className="block text-[10px] font-black text-custom-primary uppercase flex items-center gap-1.5">
-                            <ImageIcon className="w-3.5 h-3.5 text-custom-primary" />
-                            <span>Đường dẫn ảnh hoạt động (Google Drive hoặc URL trực tiếp)</span>
-                            <span className="bg-yellow-400 text-slate-900 text-[8px] font-extrabold px-1.5 py-0.5 rounded uppercase">Mạng đám mây</span>
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Dán liên kết ảnh Google Drive chia sẻ công khai hoặc liên kết ảnh trực tiếp..."
-                            className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 transition-all shadow-sm"
-                            value={newImage}
-                            onChange={(e) => {
-                              setNewImage(e.target.value);
-                              setCustomImageFile(null);
-                            }}
-                          />
-                          <p className="text-[9px] text-slate-400 leading-relaxed font-semibold">
-                            💡 <strong>Mẹo:</strong> Hệ thống sẽ tự động chuyển đổi liên kết Google Drive sang dạng hình ảnh hiển thị trực quan trực tiếp trên Sổ liên lạc của phụ huynh.
-                          </p>
+                        {/* THU GỌN VÀ CHỈ GIỮ LẠI ĐƯỜNG DẪN ẢNH GOOGLE DRIVE CÓ LIVE PREVIEW */}
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-4">
+                          <div className="space-y-2">
+                            <label className="block text-[10px] font-black text-custom-primary uppercase flex items-center gap-1.5">
+                              <ImageIcon className="w-3.5 h-3.5 text-custom-primary" />
+                              <span>Nhập link ảnh công khai Google Drive (hoặc URL trực tiếp)</span>
+                              <span className="bg-yellow-400 text-slate-900 text-[8px] font-extrabold px-1.5 py-0.5 rounded uppercase">Dán Link</span>
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Dán liên kết ảnh Google Drive chia sẻ công khai hoặc URL liên kết trực tiếp..."
+                              className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 transition-all shadow-sm"
+                              value={newImage}
+                              onChange={(e) => {
+                                setNewImage(e.target.value);
+                                setCustomImageFile(null);
+                              }}
+                            />
+                            <p className="text-[9px] text-slate-400 leading-relaxed font-semibold">
+                              💡 <strong>Mẹo:</strong> Hệ thống tự động phân tích và kết xuất trực tiếp các link Google Drive dạng chia sẻ sang định dạng ảnh tương ứng.
+                            </p>
+                          </div>
+
+                          {/* Bộ chuyển đổi liên kết sang hình ảnh hiển thị trực quan trực tiếp (<img> preview) */}
+                          {newImage.trim() && (
+                            <div className="space-y-2 pt-3 border-t border-slate-200">
+                              <span className="block text-[9px] font-black text-slate-500 uppercase tracking-wider">
+                                🖼️ Bộ Chuyển Đổi Ảnh Hiển Thị Thẻ &lt;img&gt; Xem Trước:
+                              </span>
+                              {(() => {
+                                const convertedUrl = parseAndConvertDriveUrl(newImage);
+                                return (
+                                  <div className="relative rounded-xl overflow-hidden border border-slate-300 bg-white max-h-48 flex flex-col items-center justify-center p-2 shadow-inner">
+                                    <img 
+                                      src={convertedUrl} 
+                                      alt="Ảnh hoạt động xem trước" 
+                                      className="max-h-40 w-auto object-contain rounded-lg"
+                                      onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        const parent = e.target.parentNode;
+                                        if (parent) {
+                                          const errBox = parent.querySelector('.preview-error-box');
+                                          if (errBox) errBox.classList.remove('hidden');
+                                        }
+                                      }}
+                                    />
+                                    <div className="preview-error-box hidden p-4 text-center text-red-500 text-[10px] font-bold">
+                                      ⚠️ Không thể tải hình ảnh thực tế! Vui lòng kiểm tra lại liên kết hoặc quyền chia sẻ công khai của ảnh trên Google Drive!
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
                         </div>
 
                         {/* Văn bản Nhận xét */}
@@ -1737,7 +1772,9 @@
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {reports.filter(r => r.squad === loggedInSquad).map(report => {
                         const isCommon = report.studentId === 'COMMON';
-                        const student = isCommon ? { name: 'Nhận xét Chung Toàn Tiểu Đội' } : students.find(s => s.id === report.studentId);
+                        const student = isCommon 
+                          ? { name: `Nhận xét Chung Toàn Tiểu Đội ${report.squad}` } 
+                          : (students.find(s => s.id === report.studentId) || { name: `Chiến sĩ (${report.studentId})` });
                         
                         return (
                           <div 
@@ -1762,11 +1799,11 @@
                             {report.image && (
                               <div className="relative group overflow-hidden rounded-lg border border-slate-200 h-24">
                                 <img 
-                                  src={report.image} 
+                                  src={parseAndConvertDriveUrl(report.image)} 
                                   alt="Review" 
                                   className="w-full h-full object-cover cursor-zoom-in hover:opacity-90 transition-all" 
                                   onClick={() => setZoomedImage({
-                                    url: report.image,
+                                    url: parseAndConvertDriveUrl(report.image),
                                     title: isCommon
                                       ? `[HÌNH CHUNG TIỂU ĐỘI ${report.squad}] - Hoạt động: ${report.activity} (${report.date})`
                                       : `${student ? student.name : 'Chiến sĩ'} - Hoạt động: ${report.activity} (${report.date})`
@@ -2178,7 +2215,10 @@
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {reports.map((report) => {
                         const isCommon = report.studentId === 'COMMON';
-                        const student = isCommon ? { name: 'Nhận xét Chung Toàn Tiểu Đội' } : students.find(s => s.id === report.studentId);
+                        // SỬA ĐỔI: Đối chiếu tìm đúng tên học viên tương xứng, nếu không tìm thấy sẽ hiển thị "Chiến sĩ (Mã học viên)"
+                        const student = isCommon 
+                          ? { name: `Nhận xét Chung Toàn Tiểu Đội ${report.squad}` } 
+                          : (students.find(s => s.id === report.studentId) || { name: `Chiến sĩ (${report.studentId})` });
                         return (
                           <div 
                             key={report.id} 
@@ -2189,7 +2229,7 @@
                             <div className="space-y-2">
                               <div className="flex justify-between items-center border-b border-slate-200 pb-2">
                                 <span className={`font-extrabold text-xs ${isCommon ? 'text-amber-800' : 'text-custom-primary'}`}>
-                                  {student ? student.name : 'Chiến sĩ bí mật'}
+                                  {student.name}
                                 </span>
                                 <span className="text-[8px] bg-custom-accent text-green-950 font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">
                                   TĐ {report.squad}
@@ -2200,7 +2240,7 @@
                             </div>
 
                             {report.image && (
-                              <img src={report.image} alt="Báo cáo" className="w-full h-24 object-cover rounded-lg border border-slate-300 cursor-zoom-in" onClick={() => setZoomedImage({ url: report.image, title: `Báo cáo giám sát TĐ ${report.squad}` })} />
+                              <img src={parseAndConvertDriveUrl(report.image)} alt="Báo cáo" className="w-full h-24 object-cover rounded-lg border border-slate-300 cursor-zoom-in" onClick={() => setZoomedImage({ url: parseAndConvertDriveUrl(report.image), title: `Báo cáo giám sát TĐ ${report.squad}` })} />
                             )}
 
                             <div className="pt-2 border-t border-slate-200/50 flex justify-between items-center text-[9px] font-bold">
@@ -2208,7 +2248,7 @@
                               <div className="flex gap-1.5">
                                 <button
                                   onClick={() => handleStartEditReport(report)}
-                                  className="text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-lg active-scale"
+                                  className="text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-lg active-scale animate-pulse"
                                 >
                                   ✏️ Sửa
                                 </button>
@@ -2337,11 +2377,11 @@
                               {report.image && (
                                 <div className="relative rounded-lg overflow-hidden h-32 border border-slate-100 bg-slate-50 group">
                                   <img 
-                                    src={report.image} 
+                                    src={parseAndConvertDriveUrl(report.image)} 
                                     alt="Ảnh dã ngoại" 
                                     className="w-full h-full object-cover cursor-zoom-in group-hover:scale-105 transition-transform"
                                     onClick={() => setZoomedImage({
-                                      url: report.image,
+                                      url: parseAndConvertDriveUrl(report.image),
                                       title: isCommon 
                                         ? `[CHUNG TĐ ${report.squad}] - ${report.activity} (${report.date})`
                                         : `${viewingStudent.name} - ${report.activity} (${report.date})`
@@ -2380,8 +2420,8 @@
               <div className="relative bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl z-10 animate-scaleIn overflow-hidden border border-amber-500/30">
                 
                 {/* Header Modal */}
-                <div className="bg-gradient-to-r from-amber-600 to-amber-700 p-4 md:p-5 flex justify-between items-center shrink-0">
-                  <div className="text-white">
+                <div className="bg-gradient-to-r from-amber-600 to-amber-700 p-4 md:p-5 flex justify-between items-center shrink-0 text-white">
+                  <div>
                     <span className="bg-amber-900/50 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider border border-amber-500/30">
                       Đặc quyền sửa chữa BCH Tổng
                     </span>
@@ -2459,14 +2499,37 @@
                       </div>
                     )}
 
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Đường dẫn ảnh trực tiếp / Link Google Drive</label>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-slate-700 uppercase">Đường dẫn ảnh hoạt động (Google Drive hoặc URL trực tiếp)</label>
                       <input 
                         type="text" 
-                        className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs outline-none" 
+                        className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs outline-none bg-slate-50 font-semibold" 
                         value={newImage} 
                         onChange={(e) => setNewImage(e.target.value)} 
                       />
+                      {newImage.trim() && (
+                        <div className="space-y-1.5">
+                          <span className="block text-[9px] font-bold text-slate-400 uppercase">Xem trước hình hiển thị trên giao diện phụ huynh:</span>
+                          <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50 max-h-36 flex flex-col items-center justify-center p-1">
+                            <img 
+                              src={parseAndConvertDriveUrl(newImage)} 
+                              alt="Ảnh xem trước" 
+                              className="max-h-32 w-auto object-contain rounded"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                const parent = e.target.parentNode;
+                                if (parent) {
+                                  const errLabel = parent.querySelector('.modal-preview-error');
+                                  if (errLabel) errLabel.classList.remove('hidden');
+                                }
+                              }}
+                            />
+                            <div className="modal-preview-error hidden text-red-500 text-[10px] font-bold">
+                              ⚠️ Lỗi tải ảnh! Vui lòng kiểm tra quyền chia sẻ Drive!
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div>
