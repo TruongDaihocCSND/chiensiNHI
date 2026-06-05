@@ -1640,62 +1640,26 @@
                           </div>
                         )}
 
-                        {/* Tải tệp ảnh hoặc chọn link mẫu nhanh */}
-                        <div className="grid sm:grid-cols-2 gap-3.5">
-                          <div>
-                            <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wide mb-1">Chọn nhanh từ kho mẫu ảnh</label>
-                            <select
-                              className="w-full p-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-xs font-medium bg-slate-50"
-                              value={newImage}
-                              onChange={(e) => {
-                                setNewImage(e.target.value);
-                                setCustomImageFile(null);
-                              }}
-                            >
-                              <option value="">Chọn một ảnh dã ngoại có sẵn...</option>
-                              <option value={APP_CONFIG.defaultImages.squad1}>Huấn luyện điều lệnh đội ngũ 👮‍♂️</option>
-                              <option value={APP_CONFIG.defaultImages.squad2}>Tập huấn kỹ năng dã ngoại sơ cứu 🩹</option>
-                              <option value={APP_CONFIG.defaultImages.squad3}>Lớp học chuyên đề an ninh xã hội 🏫</option>
-                              <option value={APP_CONFIG.defaultImages.squad4}>Hội thao việt dã vượt chướng ngại vật 🏃‍♂️</option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-[10px] font-bold text-slate-600 mb-1 flex items-center gap-1">
-                              <Camera className="w-3.5 h-3.5 text-custom-primary" /> Tải ảnh lên Google Drive
-                            </label>
-                            <input 
-                              type="text"
-                              value={newImage}
-                              onChange={(e) => setNewImage(e.target.value)}
-                              placeholder="Dán đường dẫn ảnh Google Drive công khai"
-                              className="w-full p-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-xs font-medium"
-                            />
-                            {isUploadingToDrive && (
-                              <div className="flex items-center gap-1.5 mt-1 text-[9px] text-green-700 font-extrabold animate-pulse">
-                                 <span className="w-1.5 h-1.5 rounded-full bg-green-600 animate-ping"></span>
-                                 <span>Đang lưu trữ Google Drive tự động...</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* DÁN LINK GOOGLE DRIVE THUẬN TIỆN */}
-                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5">
-                          <label className="block text-[10px] font-black text-custom-primary uppercase flex items-center gap-1">
-                            <span>🔗 Đường dẫn ảnh hiển thị trực tiếp</span>
+                        {/* CHỈ GIỮ LẠI ĐƯỜNG DẪN ẢNH GOOGLE DRIVE */}
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2.5">
+                          <label className="block text-[10px] font-black text-custom-primary uppercase flex items-center gap-1.5">
+                            <ImageIcon className="w-3.5 h-3.5 text-custom-primary" />
+                            <span>Đường dẫn ảnh hoạt động (Google Drive hoặc URL trực tiếp)</span>
                             <span className="bg-yellow-400 text-slate-900 text-[8px] font-extrabold px-1.5 py-0.5 rounded uppercase">Mạng đám mây</span>
                           </label>
                           <input
                             type="text"
-                            placeholder="Nhập thủ công hoặc liên kết tự phát sinh sau khi tải lên"
-                            className="w-full p-2 bg-white border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-700"
+                            placeholder="Dán liên kết ảnh Google Drive chia sẻ công khai hoặc liên kết ảnh trực tiếp..."
+                            className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 transition-all shadow-sm"
                             value={newImage}
                             onChange={(e) => {
                               setNewImage(e.target.value);
                               setCustomImageFile(null);
                             }}
                           />
+                          <p className="text-[9px] text-slate-400 leading-relaxed font-semibold">
+                            💡 <strong>Mẹo:</strong> Hệ thống sẽ tự động chuyển đổi liên kết Google Drive sang dạng hình ảnh hiển thị trực quan trực tiếp trên Sổ liên lạc của phụ huynh.
+                          </p>
                         </div>
 
                         {/* Văn bản Nhận xét */}
@@ -2106,7 +2070,7 @@
                             });
 
                             if (sibling && sibling.parentPassword) {
-                              return `${sibling.parentPassword} (Dùng chung với chiến sĩ nhí ${sibling.name})`;
+                              return `${sibling.parentPassword} (Dùng chung with chiến sĩ nhí ${sibling.name})`;
                             }
                             
                             return createParentPasswordByLogic(currentPhone || '1234', '(Mã số ID)');
@@ -2129,7 +2093,7 @@
                   <div className="lg:col-span-8">
                     <div className="bg-white rounded-2xl shadow p-4 md:p-5 border border-slate-100 space-y-4">
                       <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                        <h3 className="text-xs font-black text-slate-700 tracking-wider uppercase">Danh Sách Học Viên Toàn Khóa</h3>
+                        <h3 className="text-xs font-black text-slate-700 tracking-wider uppercase">Danh Sách Học Viên Toàn Khỏa</h3>
                         <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">Quản lý trực tiếp trên Đám Mây</span>
                       </div>
 
