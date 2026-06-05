@@ -25,8 +25,8 @@
       --accent-hover: #fbc02d;     /* Màu vàng đậm hơn khi di chuột qua */
       --secondary: #e65100;        /* Màu cam phụ (Dành cho Chỉ huy / Tác chiến dã ngoại) */
       --secondary-hover: #f57c00;  /* Màu cam tươi hơn khi di chuột qua */
-      --bg-body: #f1f5f9;          /* Màu nền chính của toàn bộ trang web (Xám nhạt dịu mắt) */
-      --card-bg: #ffffff;          /* Màu nền của các khung, thẻ thông tin (Trắng tinh khiết) */
+      --bg-body: #f8fafc;          /* Màu nền chính mịn màng slate-50 */
+      --card-bg: #ffffff;          /* Màu nền của các khung, thẻ thông tin */
     }
 
     body {
@@ -67,8 +67,8 @@
     
     /* Thiết kế thanh cuộn cao cấp */
     ::-webkit-scrollbar {
-      width: 5px;
-      height: 5px;
+      width: 6px;
+      height: 6px;
     }
     ::-webkit-scrollbar-track {
       background: #f1f5f9;
@@ -816,7 +816,14 @@
         setNewStudentPhone(student.parentPhone || '');
         setNewStudentEmail(student.parentEmail || '');
         setNewStudentAvatar(student.avatar || 'nam.png');
-        window.scrollTo({ top: 400, behavior: 'smooth' });
+        
+        // Cuộn mượt mà lên khu vực form nhập liệu dã chiến
+        const formElement = document.getElementById('student-input-form');
+        if (formElement) {
+          formElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          window.scrollTo({ top: 400, behavior: 'smooth' });
+        }
         showToast(`Đã nạp thông tin để sửa học viên: ${student.name}`);
       };
 
@@ -854,9 +861,16 @@
           try {
             const studentRef = fb.doc(db, basePath, 'students', editingStudentId);
             
-            // Tìm lại password dựa theo logic cũ hoặc giữ lại pass cũ
-            const oldStudentObj = students.find(s => s.id === editingStudentId);
-            const finalPassword = oldStudentObj?.parentPassword || createParentPasswordByLogic(phoneInput || '1234', editingStudentId);
+            // LOGIC YÊU CẦU: Tìm kiếm tài khoản anh/chị/em khác dựa vào trường thông tin để dùng chung pass nếu có
+            const existingSibling = students.find(s => s.id !== editingStudentId && (
+              (phoneInput && s.parentPhone && s.parentPhone === phoneInput) ||
+              (emailInput && s.parentEmail && s.parentEmail.toLowerCase() === emailInput)
+            ));
+
+            // Nếu có anh chị em khác thì thừa hưởng pass của họ, nếu không thì tự tạo pass tương ứng SĐT mới
+            const finalPassword = existingSibling && existingSibling.parentPassword
+              ? existingSibling.parentPassword
+              : createParentPasswordByLogic(phoneInput || '1234', editingStudentId);
 
             await fb.setDoc(studentRef, {
               name: newStudentName.trim(),
@@ -970,7 +984,6 @@
         if (report.studentId === 'COMMON') {
           student = { id: 'COMMON', name: `Nhận xét Chung Toàn Tiểu Đội ${report.squad}`, squad: report.squad };
         } else {
-          // BỔ SUNG: Nếu không tìm thấy học viên do cơ sở dữ liệu đồng bộ chậm hoặc đã bị thay đổi, khởi tạo học viên dự phòng giúp Modal Chỉnh sửa luôn được phép mở
           student = students.find(s => s.id === report.studentId) || { id: report.studentId, name: `Chiến sĩ (${report.studentId})`, squad: report.squad };
         }
         
@@ -1024,7 +1037,7 @@
           
           {/* TOAST THÔNG BÁO NỔI CHẠY KHẮP ỨNG DỤNG */}
           {toast && (
-            <div className={`fixed top-4 right-4 z-50 p-4 rounded-2xl shadow-xl text-xs font-bold animate-fadeIn transition-all flex items-center gap-2.5 ${
+            <div className={`fixed top-4 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-auto md:right-4 z-50 p-4 rounded-2xl shadow-xl text-xs font-bold animate-fadeIn transition-all flex items-center gap-2.5 max-w-[90%] md:max-w-sm ${
               toast.type === 'error' ? 'bg-red-600 text-white shadow-red-200' : 'bg-slate-900 text-yellow-300 shadow-slate-300'
             }`}>
               <span className="text-lg">📢</span>
@@ -1040,7 +1053,7 @@
                 <Shield />
                 <div>
                   <h1 className="font-extrabold text-xs md:text-base tracking-wider uppercase leading-tight">
-                    Sổ Liên Lạc Chương Trình Trải Nghiệm  "Chiến Sĩ Công An Nhí"
+                    Sổ Liên Lạc Chương Trình Trải Nghiệm "Chiến Sĩ Công An Nhí"
                   </h1>
                   <span className="text-[8px] md:text-[10px] font-semibold tracking-widest text-custom-accent block uppercase mt-0.5">
                     Trường Đại Học Cảnh sát nhân dân
@@ -1058,7 +1071,7 @@
                     </span>
                     <button 
                       onClick={handleLogout}
-                      className="ml-1 hover:bg-red-700 text-white transition-all bg-red-600/30 hover:scale-105 px-2 py-1 rounded-lg flex items-center gap-1 border border-red-500/20 active-scale"
+                      className="ml-1 hover:bg-red-700 text-white transition-all bg-red-600/30 hover:scale-105 px-2.5 py-1.5 rounded-lg flex items-center gap-1 border border-red-500/20 active-scale"
                     >
                       <LogOut />
                       <span className="hidden xs:inline">Thoát</span>
@@ -1075,7 +1088,7 @@
             </div>
           </header>
 
-          <main className="max-w-7xl mx-auto px-2 sm:px-4 py-4 md:py-8 flex-1 w-full">
+          <main className="max-w-7xl mx-auto px-4 py-4 md:py-8 flex-1 w-full">
             
             {/* ===================== 1. TRANG CHỦ ĐĂNG NHẬP RESPONSIVE CAO CẤP ===================== */}
             {currentView === 'landing' && (
@@ -1102,7 +1115,7 @@
                 {/* THIẾT KẾ TAB ĐĂNG NHẬP TRÊN MOBILE & GRID TRÊN DESKTOP */}
                 <div className="space-y-4">
                   {/* Thanh chuyển Tab trên Mobile */}
-                  <div className="flex md:hidden bg-slate-200/80 p-1 rounded-xl border border-slate-300/50">
+                  <div className="flex md:hidden bg-slate-200/80 p-1.5 rounded-xl border border-slate-300/50">
                     <button
                       type="button"
                       onClick={() => setLoginTab('parent')}
@@ -1126,13 +1139,13 @@
                   </div>
 
                   {/* VÙNG ĐĂNG NHẬP */}
-                  <div className="grid md:grid-cols-2 gap-4 lg:gap-6">
+                  <div className="grid md:grid-cols-2 gap-5 lg:gap-8">
                     
                     {/* CỔNG PHỤ HUYNH */}
-                    <div className={`bg-white rounded-2xl md:rounded-3xl p-5 md:p-6 shadow-md border-t-8 border-custom-primary flex flex-col justify-between hover:shadow-lg transition-shadow duration-300 ${
+                    <div className={`bg-white rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-md border-t-8 border-custom-primary flex flex-col justify-between hover:shadow-lg transition-shadow duration-300 ${
                       loginTab === 'parent' ? 'block' : 'hidden md:flex'
                     }`}>
-                      <div className="space-y-4">
+                      <div className="space-y-5">
                         <div className="flex items-center gap-3">
                           <div className="bg-emerald-50 text-custom-primary p-3 rounded-xl border border-emerald-100 shadow-inner">
                             <Users />
@@ -1144,7 +1157,7 @@
                         </div>
                         <hr className="border-slate-100" />
                         
-                        <form onSubmit={handleParentLogin} className="space-y-3.5">
+                        <form onSubmit={handleParentLogin} className="space-y-4">
                           <div>
                             <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Số điện thoại hoặc Email</label>
                             <div className="relative">
@@ -1156,7 +1169,7 @@
                                 value={parentInput}
                                 onChange={(e) => setParentInput(e.target.value)}
                                 placeholder="Nhập SĐT hoặc Email"
-                                className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-600 focus:bg-white text-xs font-semibold text-slate-800 transition-all"
+                                className="w-full pl-10 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-600 focus:bg-white text-xs font-semibold text-slate-800 transition-all"
                               />
                             </div>
                           </div>
@@ -1172,14 +1185,14 @@
                                 value={parentPasswordInput}
                                 onChange={(e) => setParentPasswordInput(e.target.value)}
                                 placeholder="Mật Khẩu"
-                                className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-600 focus:bg-white text-xs font-semibold text-slate-800 transition-all"
+                                className="w-full pl-10 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-600 focus:bg-white text-xs font-semibold text-slate-800 transition-all"
                               />
                             </div>
                           </div>
 
                           <button
                             type="submit"
-                            className="w-full bg-custom-primary hover:bg-custom-primary-light text-white font-extrabold py-3 px-4 rounded-xl shadow-md flex items-center justify-center gap-1.5 text-xs uppercase tracking-wider transition-all duration-300 hover:shadow-green-100 hover:scale-[1.01] active-scale"
+                            className="w-full bg-custom-primary hover:bg-custom-primary-light text-white font-extrabold py-3.5 px-4 rounded-xl shadow-md flex items-center justify-center gap-1.5 text-xs uppercase tracking-wider transition-all duration-300 hover:shadow-green-100 hover:scale-[1.01] active-scale"
                           >
                             <span>Truy Cập Sổ Liên Lạc Điện Tử</span>
                             <ChevronRight />
@@ -1187,16 +1200,16 @@
                         </form>
                       </div>
 
-                      <div className="mt-5 bg-emerald-50/70 p-3 rounded-xl border border-emerald-100 text-[10px] text-emerald-800 leading-relaxed font-semibold">
+                      <div className="mt-6 bg-emerald-50/70 p-4 rounded-xl border border-emerald-100 text-[10px] text-emerald-800 leading-relaxed font-semibold">
                         💡 <strong>Lưu ý:</strong> Sổ liên lạc tự động nhận diện nếu phụ huynh đăng ký nhiều hơn 1 con em học chung khóa học. Bạn chỉ cần nhập đúng SĐT để quản lý chung.
                       </div>
                     </div>
 
                     {/* CỔNG BAN CHỈ HUY */}
-                    <div className={`bg-white rounded-2xl md:rounded-3xl p-5 md:p-6 shadow-md border-t-8 border-custom-accent flex flex-col justify-between hover:shadow-lg transition-shadow duration-300 ${
+                    <div className={`bg-white rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-md border-t-8 border-custom-accent flex flex-col justify-between hover:shadow-lg transition-shadow duration-300 ${
                       loginTab === 'commander' ? 'block' : 'hidden md:flex'
                     }`}>
-                      <div className="space-y-4">
+                      <div className="space-y-5">
                         <div className="flex items-center gap-3">
                           <div className="bg-yellow-50 text-yellow-600 p-3 rounded-xl border border-yellow-100 shadow-inner">
                             <Lock />
@@ -1208,13 +1221,13 @@
                         </div>
                         <hr className="border-slate-100" />
                         
-                        <form onSubmit={handleCommanderLogin} className="space-y-3.5">
+                        <form onSubmit={handleCommanderLogin} className="space-y-4">
                           <div>
                             <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Mã Tiểu Đội / Đơn vị</label>
                             <select
                               value={squadCodeSelect}
                               onChange={(e) => setSquadCodeSelect(e.target.value)}
-                              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:bg-white text-xs font-semibold text-slate-800 transition-all"
+                              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:bg-white text-xs font-semibold text-slate-800 transition-all"
                             >
                               <option value="BCHTONG">⭐️ BAN CHỈ HUY TỔNG</option>
                               {Array.from({ length: squadCount }, (_, i) => i + 1).map((num) => {
@@ -1237,14 +1250,14 @@
                                 value={squadPasswordInput}
                                 onChange={(e) => setSquadPasswordInput(e.target.value)}
                                 placeholder="Nhập mật khẩu đơn vị"
-                                className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:bg-white text-xs font-semibold text-slate-800 tracking-widest font-mono transition-all"
+                                className="w-full pl-10 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:bg-white text-xs font-semibold text-slate-800 tracking-widest font-mono transition-all"
                               />
                             </div>
                           </div>
 
                           <button
                             type="submit"
-                            className="w-full bg-custom-secondary hover:bg-custom-secondary-hover text-white font-extrabold py-3 px-4 rounded-xl shadow-md flex items-center justify-center gap-1.5 text-xs uppercase tracking-wider transition-all duration-300 hover:shadow-orange-100 hover:scale-[1.01] active-scale"
+                            className="w-full bg-custom-secondary hover:bg-custom-secondary-hover text-white font-extrabold py-3.5 px-4 rounded-xl shadow-md flex items-center justify-center gap-1.5 text-xs uppercase tracking-wider transition-all duration-300 hover:shadow-orange-100 hover:scale-[1.01] active-scale"
                           >
                             <span>Truy Cập Trang Điều Hành</span>
                             <ChevronRight />
@@ -1252,7 +1265,7 @@
                         </form>
                       </div>
 
-                      <div className="mt-5 bg-yellow-50/70 p-3 rounded-xl border border-yellow-100 text-[10px] text-amber-800 leading-relaxed font-semibold">
+                      <div className="mt-6 bg-yellow-50/70 p-4 rounded-xl border border-yellow-100 text-[10px] text-amber-800 leading-relaxed font-semibold">
                         🛡️ <strong>Bảo mật:</strong> Tình nguyện viên sử dụng mã đơn vị tương ứng kèm mật khẩu do Ban tổ chức cung cấp.
                       </div>
                     </div>
@@ -1267,6 +1280,7 @@
             {currentView === 'parent_dashboard' && selectedChild && (
               <div className="space-y-5 md:space-y-6 animate-fadeIn">
                 
+                {}
                 {/* Thanh quản lý nhiều con cùng lúc */}
                 <div className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-md border-l-8 border-custom-primary space-y-4">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
@@ -1281,17 +1295,17 @@
                     </div>
                   </div>
 
-                  {/* Chọn nhanh con em mượt mà */}
-                  <div className="flex flex-row overflow-x-auto gap-2 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+                  {/* Chọn nhanh con em mượt mà hỗ trợ vuốt ngang mượt (snap scrolling) */}
+                  <div className="flex flex-row overflow-x-auto gap-3 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none snap-x">
                     {loggedInParentStudents.map((child) => {
                       const isSelected = selectedChild.id === child.id;
                       return (
                         <button
                           key={child.id}
                           onClick={() => setSelectedChild(child)}
-                          className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs font-bold tracking-wide transition-all duration-300 shrink-0 shadow-sm active-scale ${
+                          className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs font-bold tracking-wide transition-all duration-300 shrink-0 shadow-sm active-scale snap-center ${
                             isSelected 
-                              ? 'bg-gradient-to-r from-green-800 to-green-700 text-white border-transparent scale-105' 
+                              ? 'bg-gradient-to-r from-green-800 to-green-700 text-white border-transparent scale-[1.02]' 
                               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                           }`}
                         >
@@ -1364,15 +1378,14 @@
                     </div>
                   </div>
 
-                  {/* Cột phải: Dòng thời gian lịch sử hoạt động ngày (Bao gồm cả nhận xét chung của Tiểu Đội và cá nhân) */}
+                  {/* Cột phải: Dòng thời gian lịch sử hoạt động ngày */}
                   <div className="lg:col-span-8 space-y-4">
-                    <h3 className="text-xs md:text-sm font-black text-slate-700 tracking-wider uppercase flex items-center gap-2">
+                    <h3 className="text-xs md:text-sm font-black text-slate-700 tracking-wider uppercase flex items-center gap-2 px-1">
                       <BookOpen />
                       <span>Nhật Ký Học Học Tập & Sinh Hoạt Tiểu Đội</span>
                     </h3>
 
                     {(() => {
-                      // Gộp nhận xét cá nhân của chiến sĩ nhí và nhận xét chung ('COMMON') thuộc tiểu đội của chiến sĩ nhí
                       const filteredReports = reports.filter(r => 
                         r.studentId === selectedChild.id || 
                         (r.studentId === 'COMMON' && selectedChild.squad && r.squad === selectedChild.squad)
@@ -1406,7 +1419,7 @@
                                 
                                 {/* Khối hình ảnh hoạt động dã ngoại */}
                                 {report.image && (
-                                  <div className="w-full sm:w-48 md:w-56 h-40 sm:h-auto relative bg-slate-100 flex-shrink-0 overflow-hidden group">
+                                  <div className="w-full sm:w-48 md:w-56 h-48 sm:h-auto relative bg-slate-100 flex-shrink-0 overflow-hidden group">
                                     <img 
                                       src={parseAndConvertDriveUrl(report.image)} 
                                       alt="Ảnh rèn luyện" 
@@ -1539,6 +1552,7 @@
                 {/* Phân chia khu vực nhập liệu */}
                 <div className="grid lg:grid-cols-12 gap-5 md:gap-6">
                   
+                  {}
                   {/* Danh sách chiến sĩ & Mục Nhận Xét Chung thuộc tiểu đội quản lý - TRÊN PC */}
                   <div className="hidden lg:block lg:col-span-5 space-y-4">
                     <div className="bg-white rounded-2xl shadow p-5 space-y-4">
@@ -1627,7 +1641,7 @@
                     </div>
                   </div>
 
-                  {/* BIỂU MẪU VIẾT NHẬN XẾT HOẠT ĐỘNG MỚI (Gộp cá nhân & Chung) */}
+                  {/* BIỂU MẪU VIẾT NHẬN XẾT HOẠT ĐỘNG MỚI */}
                   <div className="lg:col-span-7">
                     {selectedStudent ? (
                       <form onSubmit={handleAddNewReport} className="bg-white rounded-2xl shadow p-5 md:p-6 border border-slate-100 space-y-4 animate-fadeIn">
@@ -1665,7 +1679,7 @@
                             <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wide mb-1">Ngày Đánh Giá</label>
                             <input
                               type="date"
-                              className="w-full p-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-xs font-medium bg-slate-50"
+                              className="w-full p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-xs font-medium bg-slate-50"
                               value={newReportDate}
                               onChange={(e) => setNewReportDate(e.target.value)}
                             />
@@ -1678,7 +1692,7 @@
                               type="text"
                               required
                               placeholder="Ví dụ: Huấn luyện điều lệnh đội ngũ, vượt rào..."
-                              className="w-full p-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-xs font-medium"
+                              className="w-full p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-xs font-medium"
                               value={newActivity}
                               onChange={(e) => setNewActivity(e.target.value)}
                             />
@@ -1692,7 +1706,7 @@
                             <div>
                               <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wide mb-1">Nền nếp tác phong</label>
                               <select
-                                className="w-full p-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-xs font-medium bg-slate-50"
+                                className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800"
                                 value={newBehaviorRating}
                                 onChange={(e) => setNewBehaviorRating(e.target.value)}
                               >
@@ -1707,7 +1721,7 @@
                             <div>
                               <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wide mb-1">Sức khỏe & Thể chất</label>
                               <select
-                                className="w-full p-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-xs font-medium bg-slate-50"
+                                className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800"
                                 value={newPhysicalRating}
                                 onChange={(e) => setNewPhysicalRating(e.target.value)}
                               >
@@ -1720,7 +1734,7 @@
                           </div>
                         )}
 
-                        {/* THU GỌN VÀ CHỈ GIỮ LẠI ĐƯỜNG DẪN ẢNH GOOGLE DRIVE CÓ LIVE PREVIEW */}
+                        {/* URL ảnh với Live Preview */}
                         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-4">
                           <div className="space-y-2">
                             <label className="block text-[10px] font-black text-custom-primary uppercase flex items-center gap-1.5">
@@ -1743,7 +1757,7 @@
                             </p>
                           </div>
 
-                          {/* Bộ chuyển đổi liên kết sang hình ảnh hiển thị trực quan trực tiếp (<img> preview) */}
+                          {/* Bộ chuyển đổi liên kết sang hình ảnh hiển thị trực quan trực tiếp */}
                           {newImage.trim() && (
                             <div className="space-y-2 pt-3 border-t border-slate-200">
                               <span className="block text-[9px] font-black text-slate-500 uppercase tracking-wider">
@@ -1794,11 +1808,11 @@
                         </div>
 
                         {/* Các nút Tác vụ */}
-                        <div className="flex gap-2 pt-2">
+                        <div className="flex gap-2.5 pt-2">
                           <button
                             type="submit"
                             disabled={isUploadingToDrive}
-                            className="flex-1 bg-custom-primary hover:bg-custom-primary-light text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all text-xs disabled:opacity-50 flex items-center justify-center gap-1.5 active-scale"
+                            className="flex-1 bg-custom-primary hover:bg-custom-primary-light text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition-all text-xs disabled:opacity-50 flex items-center justify-center gap-1.5 active-scale"
                           >
                             <CheckCircle className="w-4 h-4" />
                             <span>{editingReportId ? 'Lưu cập nhật' : 'Gửi nhận xét'}</span>
@@ -1835,7 +1849,7 @@
 
                 </div>
 
-                {/* DANH SÁCH NHẬT KÝ ĐÃ GHI CỦA TIỂU ĐỘI - CHO PHÉP CHỈNH SỬA VÀ XÓA TẠI CHỖ */}
+                {/* DANH SÁCH NHẬT KÝ ĐÃ GHI CỦA TIỂU ĐỘI */}
                 <div className="bg-white rounded-2xl shadow p-4 md:p-5 border border-slate-100 space-y-4 mt-6">
                   <h3 className="text-xs md:text-sm font-black text-slate-800 flex items-center gap-1.5 uppercase">
                     <ImageIcon className="w-5 h-5 text-custom-primary" />
@@ -1876,7 +1890,7 @@
                             </div>
 
                             {report.image && (
-                              <div className="relative group overflow-hidden rounded-lg border border-slate-200 h-24">
+                              <div className="relative group overflow-hidden rounded-lg border border-slate-200 h-32">
                                 <img 
                                   src={parseAndConvertDriveUrl(report.image)} 
                                   alt="Review" 
@@ -1906,7 +1920,7 @@
                                 <button
                                   type="button"
                                   onClick={() => handleStartEditReport(report)}
-                                  className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold py-1.5 px-2 rounded-lg text-[10px] border border-amber-200 transition-colors flex items-center justify-center gap-1 active-scale shadow-sm"
+                                  className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold py-2 px-2 rounded-lg text-[10px] border border-amber-200 transition-colors flex items-center justify-center gap-1 active-scale shadow-sm"
                                 >
                                   ✏️ Sửa
                                 </button>
@@ -1920,7 +1934,7 @@
                                       message: `Bạn có chắc muốn xóa báo cáo ngày ${report.date} này của ${isCommon ? 'tiểu đội' : 'học sinh'} khỏi đám mây?`
                                     });
                                   }}
-                                  className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-1.5 px-2 rounded-lg text-[10px] border border-red-200 transition-colors flex items-center justify-center gap-1 active-scale shadow-sm"
+                                  className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2 px-2 rounded-lg text-[10px] border border-red-200 transition-colors flex items-center justify-center gap-1 active-scale shadow-sm"
                                 >
                                   🗑️ Xóa
                                 </button>
@@ -1940,6 +1954,7 @@
             {currentView === 'general_dashboard' && (
               <div className="space-y-5 md:space-y-6 animate-fadeIn">
                 
+                {}
                 {/* Header Tổng quan */}
                 <div className="bg-gradient-to-r from-green-950 to-green-900 rounded-2xl p-5 md:p-6 text-white shadow-md border-b-4 border-custom-accent flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div>
@@ -1955,20 +1970,20 @@
                   </div>
 
                   <div className="flex gap-2 flex-wrap w-full md:w-auto">
-                    <span className="bg-black/30 px-3 py-2 rounded-xl text-[10px] md:text-xs border border-white/5 font-semibold">
-                      Tổng số: <strong className="text-custom-accent">{students.length} chiến sĩ nhí</strong>
+                    <span className="bg-black/30 px-3 py-2 rounded-xl text-[10px] md:text-xs border border-white/5 font-semibold flex-1 md:flex-none text-center">
+                      Tổng số: <strong className="text-custom-accent block sm:inline">{students.length} chiến sĩ nhí</strong>
                     </span>
-                    <span className="bg-black/30 px-3 py-2 rounded-xl text-[10px] md:text-xs border border-white/5 font-semibold">
-                      Báo cáo: <strong className="text-custom-accent">{reports.length} Nhật ký</strong>
+                    <span className="bg-black/30 px-3 py-2 rounded-xl text-[10px] md:text-xs border border-white/5 font-semibold flex-1 md:flex-none text-center">
+                      Báo cáo: <strong className="text-custom-accent block sm:inline">{reports.length} Nhật ký</strong>
                     </span>
-                    <span className="bg-black/30 px-3 py-2 rounded-xl text-[10px] md:text-xs border border-white/5 font-semibold">
-                      Quy mô: <strong className="text-custom-accent">{squadCount} Đơn vị</strong>
+                    <span className="bg-black/30 px-3 py-2 rounded-xl text-[10px] md:text-xs border border-white/5 font-semibold flex-1 md:flex-none text-center">
+                      Quy mô: <strong className="text-custom-accent block sm:inline">{squadCount} Đơn vị</strong>
                     </span>
                   </div>
                 </div>
 
                 {/* BẢNG CẤU HÌNH LIÊN KẾT GOOGLE DRIVE DÀNH CHO BCH TỔNG */}
-                <div className="bg-white rounded-2xl p-4 md:p-5 shadow border border-slate-100">
+                <div className="bg-white rounded-2xl p-4 md:p-6 shadow border border-slate-100">
                   <form onSubmit={handleSaveDriveConfig} className="space-y-3.5">
                     <div className="flex items-center gap-2 border-b pb-2">
                       <span className="text-xl">⚙️</span>
@@ -1985,14 +2000,14 @@
                           type="text"
                           required
                           placeholder="Ví dụ: https://script.google.com/macros/s/AKfycb.../exec"
-                          className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-600 bg-slate-50"
+                          className="w-full p-3 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-600 bg-slate-50"
                           value={inputScriptUrl}
                           onChange={(e) => setInputScriptUrl(e.target.value)}
                         />
                       </div>
                       <button
                         type="submit"
-                        className="w-full md:w-auto bg-custom-primary hover:bg-custom-primary-light text-white font-extrabold text-xs py-3.5 px-5 rounded-xl transition-all shadow-md shrink-0 flex items-center justify-center gap-2 active-scale"
+                        className="w-full md:w-auto bg-custom-primary hover:bg-custom-primary-light text-white font-extrabold text-xs py-3.5 px-5 rounded-xl transition-all shadow-md shrink-0 flex items-center justify-center gap-2 active-scale h-[46px]"
                       >
                         <span>🔄 Đồng bộ cổng lưu trữ</span>
                       </button>
@@ -2011,7 +2026,7 @@
                 </div>
 
                 {/* THIẾT LẬP MẬT KHẨU THỦ CÔNG CHO CÁC TIỂU ĐỘI & BCH TỔNG */}
-                <div className="bg-white rounded-2xl p-4 md:p-5 shadow border border-slate-100 space-y-4">
+                <div className="bg-white rounded-2xl p-4 md:p-6 shadow border border-slate-100 space-y-4">
                   <div className="flex items-center gap-2 border-b pb-2">
                     <span className="text-xl">🔑</span>
                     <div>
@@ -2023,7 +2038,7 @@
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     
                     {/* KHỐI ĐỔI MẬT KHẨU CHO RIÊNG BAN CHỈ HUY TỔNG */}
-                    <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-300 space-y-1.5 flex flex-col justify-between shadow-sm">
+                    <div className="bg-yellow-50 p-3.5 rounded-xl border border-yellow-300 space-y-1.5 flex flex-col justify-between shadow-sm">
                       <div className="text-[10px] font-extrabold text-yellow-800">⭐️ Mật Khẩu BCH Tổng</div>
                       <input 
                         type="text" 
@@ -2040,7 +2055,7 @@
                       const code = `TD${String(num).padStart(2, '0')}`;
                       const currentPass = squadPasswords[code] || '123456';
                       return (
-                        <div key={num} className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5 flex flex-col justify-between">
+                        <div key={num} className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5 flex flex-col justify-between">
                           <div className="text-[10px] font-bold text-slate-700">Tiểu Đội {num} ({code})</div>
                           <input 
                             type="text" 
@@ -2094,8 +2109,8 @@
                 <div className="grid lg:grid-cols-12 gap-5 md:gap-6">
                   
                   {/* BIỂU MẪU THÊM MỚI CHIẾN SĨ VÀ CHỈ ĐỊNH TIỂU ĐỘI */}
-                  <div className="lg:col-span-4">
-                    <form onSubmit={handleAddStudentByGeneral} className="bg-white rounded-2xl shadow p-4 md:p-5 border border-slate-100 space-y-3.5">
+                  <div className="lg:col-span-4" id="student-input-form">
+                    <form onSubmit={handleAddStudentByGeneral} className="bg-white rounded-2xl shadow p-5 md:p-6 border border-slate-100 space-y-4">
                       <div className="border-b border-slate-100 pb-2">
                         <span className="text-[9px] text-green-700 font-black uppercase tracking-wider block">
                           {editingStudentId ? 'CẬP NHẬT THÔNG TIN HỌC VIÊN' : 'THÊM MỚI CHIẾN SĨ'}
@@ -2114,7 +2129,7 @@
                           placeholder="Ví dụ: Nguyễn Hữu Đạt..."
                           value={newStudentName}
                           onChange={(e) => setNewStudentName(e.target.value)}
-                          className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 bg-slate-50"
+                          className="w-full p-3 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 bg-slate-50 h-11"
                         />
                       </div>
 
@@ -2125,7 +2140,7 @@
                           <select
                             value={newStudentAvatar}
                             onChange={(e) => setNewStudentAvatar(e.target.value)}
-                            className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 bg-slate-50"
+                            className="w-full p-3 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 bg-slate-50 h-11"
                           >
                             <option value="nam.png">Nam (nam.png)</option>
                             <option value="nu.png">Nữ (nu.png)</option>
@@ -2141,7 +2156,7 @@
                           placeholder="Ví dụ: 0987654321"
                           value={newStudentPhoneState}
                           onChange={(e) => setNewStudentPhone(e.target.value)}
-                          className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 bg-slate-50"
+                          className="w-full p-3 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 bg-slate-50 h-11"
                         />
                       </div>
 
@@ -2153,13 +2168,14 @@
                           placeholder="Ví dụ: phuhuynh@gmail.com (Nếu có)"
                           value={newStudentEmail}
                           onChange={(e) => setNewStudentEmail(e.target.value)}
-                          className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 bg-slate-50"
+                          className="w-full p-3 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 bg-slate-50 h-11"
                         />
                       </div>
 
-                      <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 text-[9px] text-emerald-800 font-semibold space-y-1">
+                      {/* Thông tin hiển thị mật khẩu */}
+                      <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-[9px] text-emerald-800 font-semibold space-y-1">
                         <div>🔒 <strong>Mật khẩu đăng nhập phụ huynh:</strong></div>
-                        <div className="font-mono bg-white p-1 rounded text-center border font-extrabold text-custom-primary text-[10px]">
+                        <div className="font-mono bg-white p-2 rounded text-center border font-extrabold text-custom-primary text-[10px]">
                           {(() => {
                             const currentPhone = newStudentPhoneState.trim();
                             const currentEmail = newStudentEmail.trim().toLowerCase();
@@ -2170,16 +2186,17 @@
 
                             // Dò tìm tài khoản anh/chị/em dựa vào một trong hai trường có dữ liệu
                             const sibling = students.find(s => {
+                              const isNotSelf = editingStudentId ? s.id !== editingStudentId : true;
                               const matchPhone = currentPhone && s.parentPhone && s.parentPhone === currentPhone;
                               const matchEmail = currentEmail && s.parentEmail && s.parentEmail.toLowerCase() === currentEmail;
-                              return matchPhone || matchEmail;
+                              return isNotSelf && (matchPhone || matchEmail);
                             });
 
                             if (sibling && sibling.parentPassword) {
-                              return `${sibling.parentPassword} (Dùng chung with chiến sĩ nhí ${sibling.name})`;
+                              return `${sibling.parentPassword} (Dùng chung với chiến sĩ nhí ${sibling.name})`;
                             }
                             
-                            return createParentPasswordByLogic(currentPhone || '1234', editingStudentId || '(Mã số ID)');
+                            return createParentPasswordByLogic(currentPhone || '1234', editingStudentId || 'Mã số ID');
                           })()}
                         </div>
                       </div>
@@ -2187,7 +2204,7 @@
                       <div className="flex gap-2">
                         <button
                           type="submit"
-                          className="flex-1 bg-custom-primary hover:bg-custom-primary-light text-white font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider shadow transition-all flex items-center justify-center gap-1.5 active-scale"
+                          className="flex-1 bg-custom-primary hover:bg-custom-primary-light text-white font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider shadow transition-all flex items-center justify-center gap-1.5 active-scale h-11"
                         >
                           {editingStudentId ? <CheckCircle className="w-4 h-4" /> : <Plus />}
                           <span>{editingStudentId ? 'Lưu Thay Đổi' : 'Đăng Ký Học Viên'}</span>
@@ -2206,96 +2223,171 @@
                     </form>
                   </div>
 
+                  {}
                   {/* DANH SÁCH HỌC VIÊN TOÀN KHÓA HỌC */}
                   <div className="lg:col-span-8">
-                    <div className="bg-white rounded-2xl shadow p-4 md:p-5 border border-slate-100 space-y-4">
+                    <div className="bg-white rounded-2xl shadow p-4 md:p-6 border border-slate-100 space-y-4">
                       <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                         <h3 className="text-xs font-black text-slate-700 tracking-wider uppercase">Danh Sách Học Viên Toàn Khóa</h3>
-                        <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">Phân chia tiểu đội nhanh tại bảng</span>
+                        <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">Tối ưu thao tác trên PC & Di động</span>
                       </div>
 
-                      <div className="overflow-x-auto -mx-4 sm:mx-0">
-                        <div className="inline-block min-w-full align-middle px-4 sm:px-0">
-                          <table className="min-w-full divide-y divide-slate-100 text-xs">
-                            <thead>
-                              <tr className="bg-slate-50 text-[9px] md:text-[10px] text-slate-400 font-black uppercase text-left">
-                                <th className="p-3">Học viên</th>
-                                <th className="p-3">Mã số</th>
-                                <th className="p-3">Xếp Tiểu Đội</th>
-                                <th className="p-3">Đăng nhập Phụ Huynh</th>
-                                <th className="p-3 text-center">Tác vụ</th>
+                      {/* --- PHÂN DIỆN 1: HIỂN THỊ DẠNG THẺ (CARDS) TRÊN MOBILE --- */}
+                      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:hidden">
+                        {students.map((student) => (
+                          <div key={student.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col justify-between space-y-3.5 shadow-sm">
+                            <div className="flex items-start gap-3">
+                              <span 
+                                onClick={() => setViewingStudent(student)}
+                                className="w-12 h-12 rounded-full overflow-hidden bg-slate-100 shrink-0 border border-slate-200 shadow-inner cursor-pointer block"
+                              >
+                                <RenderAvatar avatar={student.avatar} className="w-full h-full object-cover" />
+                              </span>
+                              <div className="space-y-1">
+                                <h4 
+                                  onClick={() => setViewingStudent(student)}
+                                  className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5 cursor-pointer hover:text-custom-primary"
+                                >
+                                  <span>{student.name}</span>
+                                  <span className="text-[9px] text-slate-400 font-mono">({student.id})</span>
+                                </h4>
+                                <div className="text-[10px] text-slate-500 font-medium space-y-0.5">
+                                  {student.parentPhone && <div>📞 {student.parentPhone}</div>}
+                                  {student.parentEmail && <div className="text-slate-400 break-all">📧 {student.parentEmail}</div>}
+                                </div>
+                              </div>
+                            </div>
+
+                            <hr className="border-slate-200" />
+
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              {/* Chọn Tiểu Đội Mobile */}
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[9px] font-black text-slate-400 uppercase">Tiểu đội:</span>
+                                <select
+                                  value={student.squad || 0}
+                                  onChange={(e) => handleUpdateStudentSquad(student.id, e.target.value)}
+                                  className="p-1.5 bg-white border border-slate-300 rounded-lg text-[10px] font-extrabold text-slate-700 focus:outline-none focus:ring-1 focus:ring-green-600 transition-all shadow-sm"
+                                >
+                                  <option value={0}>⚠️ Chờ xếp</option>
+                                  {Array.from({ length: squadCount }, (_, i) => i + 1).map((num) => (
+                                    <option key={num} value={num}>Tiểu Đội {num}</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* Mật khẩu */}
+                              <div className="font-mono font-bold text-custom-primary bg-emerald-50/70 px-2 py-0.5 rounded border border-emerald-100 text-[9px]">
+                                MK: {student.parentPassword || createParentPasswordByLogic(student.parentPhone || '1234', student.id)}
+                              </div>
+                            </div>
+
+                            {/* Các nút Tác vụ Mobile */}
+                            <div className="flex gap-2 pt-1 border-t border-slate-200/50">
+                              <button
+                                onClick={() => setViewingStudent(student)}
+                                className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold py-2 rounded-xl text-[10px] border border-emerald-200 flex items-center justify-center gap-1 active-scale transition-colors"
+                              >
+                                👁️ Xem Hồ Sơ
+                              </button>
+                              <button
+                                onClick={() => handleStartEditStudent(student)}
+                                className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold py-2 rounded-xl text-[10px] border border-amber-200 flex items-center justify-center gap-1 active-scale transition-colors"
+                              >
+                                ✏️ Sửa SĐT
+                              </button>
+                              <button
+                                onClick={() => handleDeleteStudent(student.id)}
+                                className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-xl border border-red-200 inline-flex items-center justify-center active-scale transition-colors"
+                              >
+                                <Trash />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* --- PHÂN DIỆN 2: HIỂN THỊ DẠNG BẢNG RỘNG RÃI TRÊN PC (DESKTOP) --- */}
+                      <div className="hidden lg:block overflow-x-auto">
+                        <table className="min-w-full divide-y divide-slate-100 text-xs">
+                          <thead>
+                            <tr className="bg-slate-50 text-[10px] text-slate-400 font-black uppercase text-left">
+                              <th className="p-3.5">Học viên</th>
+                              <th className="p-3.5">Mã số</th>
+                              <th className="p-3.5">Xếp Tiểu Đội</th>
+                              <th className="p-3.5">Đăng nhập Phụ Huynh</th>
+                              <th className="p-3.5 text-center">Tác vụ</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                            {students.map((student) => (
+                              <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="p-3.5">
+                                  <div 
+                                    onClick={() => setViewingStudent(student)}
+                                    className="flex items-center gap-3 cursor-pointer group hover:bg-slate-100 p-1.5 -ml-1.5 rounded-xl transition-colors w-max"
+                                    title="Nhấn để xem toàn bộ nhật ký rèn luyện"
+                                  >
+                                    <span className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 shrink-0 shadow-sm border border-transparent group-hover:border-custom-primary transition-all">
+                                      <RenderAvatar avatar={student.avatar} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                    </span>
+                                    <div className="flex flex-col">
+                                      <span className="font-extrabold text-slate-800 text-xs group-hover:text-custom-primary transition-colors">{student.name}</span>
+                                      <span className="text-[9px] text-custom-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity">👁️ Xem hồ sơ</span>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="p-3.5 font-mono font-bold text-slate-400">{student.id}</td>
+                                <td className="p-3.5">
+                                  {/* DROPDOWN CHỌN PHÂN CHIA SQUAD TIỂU ĐỘI TRỰC TIẾP */}
+                                  <select
+                                    value={student.squad || 0}
+                                    onChange={(e) => handleUpdateStudentSquad(student.id, e.target.value)}
+                                    className="p-2 bg-slate-50 border border-slate-300 rounded-xl text-[11px] font-extrabold text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:bg-white transition-all shadow-sm"
+                                  >
+                                    <option value={0} className="text-red-500 font-semibold">⚠️ Chờ phân tiểu đội</option>
+                                    {Array.from({ length: squadCount }, (_, i) => i + 1).map((num) => (
+                                      <option key={num} value={num}>Tiểu Đội {num}</option>
+                                    ))}
+                                  </select>
+                                </td>
+                                <td className="p-3.5 text-[10px] text-slate-500 space-y-0.5">
+                                  {student.parentPhone && <div>📞 {student.parentPhone}</div>}
+                                  {student.parentEmail && <div className="text-slate-400 break-all">📧 {student.parentEmail}</div>}
+                                  <div className="mt-1 font-mono font-bold text-custom-primary bg-emerald-50/70 px-1.5 py-0.5 rounded w-max border border-emerald-100 text-[9px]">
+                                    🔑 MK: {student.parentPassword || createParentPasswordByLogic(student.parentPhone || '1234', student.id)}
+                                  </div>
+                                </td>
+                                <td className="p-3.5 text-center">
+                                  <div className="flex gap-2 justify-center">
+                                    <button
+                                      onClick={() => handleStartEditStudent(student)}
+                                      className="bg-amber-50 hover:bg-amber-100 text-amber-700 p-2 rounded-xl transition-colors border border-amber-200 inline-flex items-center justify-center active-scale shadow-sm"
+                                      title="Sửa thông tin học viên"
+                                    >
+                                      ✏️ Sửa
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteStudent(student.id)}
+                                      className="bg-red-50 hover:bg-red-100 text-red-600 p-2.5 rounded-xl transition-colors border border-red-200/50 inline-flex items-center justify-center active-scale shadow-sm"
+                                      title="Xóa học viên vĩnh viễn"
+                                    >
+                                      <Trash />
+                                    </button>
+                                  </div>
+                                </td>
                               </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                              {students.map((student) => (
-                                <tr key={student.id} className="hover:bg-slate-50/50">
-                                  <td className="p-3">
-                                    <div 
-                                      onClick={() => setViewingStudent(student)}
-                                      className="flex items-center gap-2 cursor-pointer group hover:bg-slate-100 p-1.5 -ml-1.5 rounded-lg transition-colors w-max"
-                                      title="Nhấn để xem toàn bộ nhật ký rèn luyện"
-                                    >
-                                      <span className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 shrink-0 shadow-sm border border-transparent group-hover:border-custom-primary transition-colors">
-                                        <RenderAvatar avatar={student.avatar} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                                      </span>
-                                      <div className="flex flex-col">
-                                        <span className="font-extrabold text-slate-800 text-[11px] sm:text-xs group-hover:text-custom-primary transition-colors">{student.name}</span>
-                                        <span className="text-[9px] text-custom-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity">👁️ Xem hồ sơ</span>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td className="p-3 font-mono font-bold text-slate-400">{student.id}</td>
-                                  <td className="p-3">
-                                    {/* DROPDOWN CHỌN PHÂN CHIA SQUAD TIỂU ĐỘI TRỰC TIẾP */}
-                                    <select
-                                      value={student.squad || 0}
-                                      onChange={(e) => handleUpdateStudentSquad(student.id, e.target.value)}
-                                      className="p-2 bg-slate-50 border border-slate-300 rounded-xl text-[11px] font-extrabold text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:bg-white transition-all shadow-sm"
-                                    >
-                                      <option value={0} className="text-red-500 font-semibold">⚠️ Chờ phân tiểu đội</option>
-                                      {Array.from({ length: squadCount }, (_, i) => i + 1).map((num) => (
-                                        <option key={num} value={num}>Tiểu Đội {num}</option>
-                                      ))}
-                                    </select>
-                                  </td>
-                                  <td className="p-3 text-[10px] text-slate-500 space-y-0.5">
-                                    {student.parentPhone && <div>📞 {student.parentPhone}</div>}
-                                    {student.parentEmail && <div className="text-slate-400 break-all">📧 {student.parentEmail}</div>}
-                                    <div className="mt-1 font-mono font-bold text-custom-primary bg-emerald-50/70 px-1.5 py-0.5 rounded w-max border border-emerald-100 text-[8px] md:text-[9px]">
-                                      🔑 MK: {student.parentPassword || createParentPasswordByLogic(student.parentPhone || '1234', student.id)}
-                                    </div>
-                                  </td>
-                                  <td className="p-3 text-center">
-                                    <div className="flex gap-1.5 justify-center">
-                                      <button
-                                        onClick={() => handleStartEditStudent(student)}
-                                        className="bg-amber-50 hover:bg-amber-100 text-amber-700 p-2 rounded-xl transition-colors border border-amber-200 inline-flex items-center justify-center active-scale"
-                                        title="Sửa thông tin học viên"
-                                      >
-                                        ✏️
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteStudent(student.id)}
-                                        className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-xl transition-colors border border-red-200/50 inline-flex items-center justify-center active-scale"
-                                        title="Xóa học viên vĩnh viễn"
-                                      >
-                                        <Trash />
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   </div>
 
                 </div>
 
-               {/* GIÁM SÁT TOÀN BỘ BÁO CÁO CỦA CÁC TIỂU ĐỘI (Bao gồm báo cáo cá nhân và chung) */}
-                <div className="bg-white rounded-2xl shadow p-4 md:p-5 border border-slate-100 space-y-4">
+               {/* GIÁM SÁT TOÀN BỘ BÁO CÁO CỦA CÁC TIỂU ĐỘI */}
+                <div className="bg-white rounded-2xl shadow p-4 md:p-6 border border-slate-100 space-y-4">
                   <div className="border-b border-slate-100 pb-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5">
                     <h3 className="text-xs md:text-sm font-black text-slate-700 tracking-wider uppercase flex items-center gap-1.5">
                       <img src="Logo.png" alt="Icon" className="w-5 h-5 object-cover rounded-full" />
@@ -2312,7 +2404,6 @@
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {reports.map((report) => {
                         const isCommon = report.studentId === 'COMMON';
-                        // SỬA ĐỔI: Đối chiếu tìm đúng tên học viên tương xứng, nếu không tìm thấy sẽ hiển thị "Chiến sĩ (Mã học viên)"
                         const student = isCommon 
                           ? { name: `Nhận xét Chung Toàn Tiểu Đội ${report.squad}` } 
                           : (students.find(s => s.id === report.studentId) || { name: `Chiến sĩ (${report.studentId})` });
@@ -2337,7 +2428,7 @@
                             </div>
 
                             {report.image && (
-                              <img src={parseAndConvertDriveUrl(report.image)} alt="Báo cáo" className="w-full h-24 object-cover rounded-lg border border-slate-300 cursor-zoom-in" onClick={() => setZoomedImage({ url: parseAndConvertDriveUrl(report.image), title: `Báo cáo giám sát TĐ ${report.squad}` })} />
+                              <img src={parseAndConvertDriveUrl(report.image)} alt="Báo cáo" className="w-full h-32 object-cover rounded-lg border border-slate-300 cursor-zoom-in" onClick={() => setZoomedImage({ url: parseAndConvertDriveUrl(report.image), title: `Báo cáo giám sát TĐ ${report.squad}` })} />
                             )}
 
                             <div className="pt-2 border-t border-slate-200/50 flex justify-between items-center text-[9px] font-bold">
@@ -2345,7 +2436,7 @@
                               <div className="flex gap-1.5">
                                 <button
                                   onClick={() => handleStartEditReport(report)}
-                                  className="text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-lg active-scale animate-pulse"
+                                  className="text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-lg active-scale"
                                 >
                                   ✏️ Sửa
                                 </button>
@@ -2472,7 +2563,7 @@
                               </div>
 
                               {report.image && (
-                                <div className="relative rounded-lg overflow-hidden h-32 border border-slate-100 bg-slate-50 group">
+                                <div className="relative rounded-lg overflow-hidden h-36 border border-slate-100 bg-slate-50 group">
                                   <img 
                                     src={parseAndConvertDriveUrl(report.image)} 
                                     alt="Ảnh dã ngoại" 
@@ -2548,7 +2639,7 @@
                         <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Ngày Đánh Giá</label>
                         <input 
                           type="date" 
-                          className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs bg-slate-50 outline-none" 
+                          className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs bg-slate-50 outline-none h-11" 
                           value={newReportDate} 
                           onChange={(e) => setNewReportDate(e.target.value)} 
                         />
@@ -2558,7 +2649,7 @@
                         <input 
                           type="text" 
                           required 
-                          className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs outline-none" 
+                          className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs outline-none h-11" 
                           value={newActivity} 
                           onChange={(e) => setNewActivity(e.target.value)} 
                         />
@@ -2570,7 +2661,7 @@
                         <div>
                           <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Nền nếp tác phong</label>
                           <select 
-                            className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs bg-slate-50 outline-none" 
+                            className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 h-11"
                             value={newBehaviorRating} 
                             onChange={(e) => setNewBehaviorRating(e.target.value)}
                           >
@@ -2583,7 +2674,7 @@
                         <div>
                           <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Sức khỏe & Thể chất</label>
                           <select 
-                            className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs bg-slate-50 outline-none" 
+                            className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 h-11"
                             value={newPhysicalRating} 
                             onChange={(e) => setNewPhysicalRating(e.target.value)}
                           >
@@ -2600,7 +2691,7 @@
                       <label className="block text-[10px] font-bold text-slate-700 uppercase">Đường dẫn ảnh hoạt động (Google Drive hoặc URL trực tiếp)</label>
                       <input 
                         type="text" 
-                        className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs outline-none bg-slate-50 font-semibold" 
+                        className="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs outline-none bg-slate-50 font-semibold h-11" 
                         value={newImage} 
                         onChange={(e) => setNewImage(e.target.value)} 
                       />
@@ -2639,11 +2730,11 @@
                       ></textarea>
                     </div>
 
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-2.5 pt-2">
                       <button 
                         type="submit" 
                         disabled={isUploadingToDrive} 
-                        className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-3 px-4 rounded-xl shadow-md text-xs active-scale transition-colors"
+                        className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-md text-xs active-scale transition-colors h-11"
                       >
                         Lưu Thay Đổi Dữ Liệu
                       </button>
@@ -2655,7 +2746,7 @@
                           setNewActivity('');
                           setNewComment('');
                         }} 
-                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 rounded-xl text-xs font-bold border border-slate-300 active-scale transition-colors"
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 rounded-xl text-xs font-bold border border-slate-300 active-scale transition-colors h-11"
                       >
                         Hủy
                       </button>
