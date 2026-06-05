@@ -155,7 +155,7 @@
     };
 
     // ============================================================================
-    // BỘ BIỂU TƯỢNG SVG NGUYÊN BẢN 100% CỦA KHÁCH HÀNG
+    // BỘ BIỂU TƯỢNG SVG NGUYÊN BẢN 100%
     // ============================================================================
     const Shield = () => (
       <div className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden flex items-center justify-center bg-emerald-800 shrink-0">
@@ -259,8 +259,7 @@
         squad2: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=600', 
         squad3: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&q=80&w=600', 
         squad4: 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?auto=format&fit=crop&q=80&w=600', 
-      },
-      generalCode: 'BCHTONG' 
+      }
     };
 
     const createParentPasswordByLogic = (phone, id) => {
@@ -349,7 +348,7 @@
       const [inputScriptUrl, setInputScriptUrl] = useState('');
       const [isUploadingToDrive, setIsUploadingToDrive] = useState(false);
 
-      // Quản lý mật khẩu thủ công cho các tiểu đội do BCH Tổng cài đặt
+      // Quản lý mật khẩu thủ công cho các tiểu đội & BCH Tổng do BCH Tổng cài đặt
       const [squadPasswords, setSquadPasswords] = useState({});
 
       // Trạng thái điều hướng giao diện chính
@@ -515,6 +514,7 @@
             setSquadPasswords(docSnap.data() || {});
           } else {
             const defaultPasses = {
+              'BCHTONG_PASS': 'BCHTONG', // Đặc quyền tạo Mật khẩu cho BCH Tổng
               'TD01': '123456',
               'TD02': '123456',
               'TD03': '123456',
@@ -592,8 +592,10 @@
           return;
         }
 
-        if (squadCode === APP_CONFIG.generalCode) {
-          if (inputPass === APP_CONFIG.generalCode) {
+        // Kiểm tra quyền đăng nhập của BCH Tổng
+        if (squadCode === 'BCHTONG') {
+          const generalPass = squadPasswords['BCHTONG_PASS'] || 'BCHTONG';
+          if (inputPass === generalPass) {
             setRole('general');
             setLoggedInSquad(null);
             setCurrentView('general_dashboard');
@@ -747,6 +749,14 @@
 
             showToast(`Đã đồng bộ cập nhật thành công!`);
             setEditingReportId(null);
+            
+            // Xóa state để đóng modal nếu là BCH Tổng
+            if (role === 'general') {
+              setSelectedStudent(null);
+              setNewActivity('');
+              setNewComment('');
+            }
+            
           } else {
             const newId = `r-${Date.now()}`;
             const reportRef = fb.doc(db, basePath, 'reports', newId);
@@ -763,13 +773,14 @@
             });
 
             showToast(`Đã lưu nhận xét thành công!`);
+            
+            setNewActivity('');
+            setNewComment('');
+            setNewImage('');
+            setCustomImageFile(null);
+            setSelectedStudent(null);
           }
 
-          setNewActivity('');
-          setNewComment('');
-          setNewImage('');
-          setCustomImageFile(null);
-          setSelectedStudent(null);
         } catch (error) {
           showToast('Lỗi khi đồng bộ lên dữ liệu đám mây!', 'error');
           console.error(error);
@@ -898,7 +909,9 @@
         setNewImage(report.image);
         setCustomImageFile(null);
         
-        window.scrollTo({ top: 200, behavior: 'smooth' });
+        if (role !== 'general') {
+            window.scrollTo({ top: 200, behavior: 'smooth' });
+        }
         showToast(`Đã nạp dữ liệu rèn luyện của: ${student ? student.name : ''}`);
       };
 
@@ -1007,26 +1020,6 @@
                     <p className="text-xs md:text-sm text-emerald-100/90 leading-relaxed font-medium">
                       Chào mừng quý phụ huynh và các đồng chí. Đây là hệ thống sổ liên lạc điện tử của chương trình trải nghiệm "Chiến sĩ Công an nhí" năm 2026 tại Trường Đại học Cảnh sát nhân dân.
                     </p>
-                  </div>
-
-                   <div className="mt-6 bg-black/40 backdrop-blur-md p-3.5 rounded-xl border border-white/5 max-w-md space-y-1.5">
-                    <div className="text-[10px] text-custom-accent font-bold uppercase tracking-wider flex items-center gap-1">
-                      <span>📌</span> Tài khoản thử nghiệm nhanh (Demo):
-                    </div>
-                    <ul className="text-[10px] sm:text-[11px] text-slate-300 font-medium space-y-1 font-mono">
-                      <li className="flex justify-between border-b border-white/5 pb-0.5">
-                        <span>Phụ huynh: <strong className="text-white">0987654321</strong></span>
-                        <span>Mật khẩu: <strong className="text-yellow-300">PH4321001</strong></span>
-                      </li>
-                      <li className="flex justify-between border-b border-white/5 pb-0.5">
-                        <span>Tiểu đội 1: <strong className="text-white">TD01</strong></span>
-                        <span>Mật khẩu: <strong className="text-yellow-300">123456</strong></span>
-                      </li>
-                      <li className="flex justify-between">
-                        <span>Chỉ Huy Tổng: <strong className="text-white">BCHTONG</strong></span>
-                        <span>Mật khẩu: <strong className="text-yellow-300">BCHTONG</strong></span>
-                      </li>
-                    </ul>
                   </div>
                 </div>
 
@@ -1937,17 +1930,32 @@
                   </form>
                 </div>
 
-                {/* THIẾT LẬP MẬT KHẨU THỦ CÔNG CHO CÁC TIỂU ĐỘI */}
+                {/* THIẾT LẬP MẬT KHẨU THỦ CÔNG CHO CÁC TIỂU ĐỘI & BCH TỔNG */}
                 <div className="bg-white rounded-2xl p-4 md:p-5 shadow border border-slate-100 space-y-4">
                   <div className="flex items-center gap-2 border-b pb-2">
                     <span className="text-xl">🔑</span>
                     <div>
-                      <h3 className="text-xs md:text-sm font-black text-slate-800">Quản Lý Mật Khẩu Đăng Nhập Của Các Tiểu Đội</h3>
-                      <p className="text-[10px] text-slate-400">Thiết lập mật khẩu riêng cho từng đơn vị phụ trách viết nhật ký rèn luyện.</p>
+                      <h3 className="text-xs md:text-sm font-black text-slate-800">Quản Lý Mật Khẩu Đăng Nhập Hệ Thống</h3>
+                      <p className="text-[10px] text-slate-400">Thiết lập mật khẩu riêng cho tài khoản Tổng và từng đơn vị phụ trách viết nhật ký rèn luyện.</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    
+                    {/* KHỐI ĐỔI MẬT KHẨU CHO RIÊNG BAN CHỈ HUY TỔNG */}
+                    <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-300 space-y-1.5 flex flex-col justify-between shadow-sm">
+                      <div className="text-[10px] font-extrabold text-yellow-800">⭐️ Mật Khẩu BCH Tổng</div>
+                      <input 
+                        type="text" 
+                        defaultValue={squadPasswords['BCHTONG_PASS'] || 'BCHTONG'}
+                        onBlur={(e) => handleSaveSquadPasswords('BCHTONG_PASS', e.target.value)}
+                        placeholder="Mật khẩu tổng"
+                        className="w-full p-2 bg-white border border-yellow-300 rounded-lg text-xs font-mono font-bold text-center text-yellow-900 focus:ring-2 focus:ring-yellow-500 outline-none"
+                      />
+                      <div className="text-[7px] text-yellow-600 text-center uppercase tracking-wider font-extrabold">Nhấn ra ngoài để tự lưu</div>
+                    </div>
+
+                    {/* MẬT KHẨU CÁC TIỂU ĐỘI */}
                     {Array.from({ length: squadCount }, (_, i) => i + 1).map((num) => {
                       const code = `TD${String(num).padStart(2, '0')}`;
                       const currentPass = squadPasswords[code] || '123456';
@@ -1959,9 +1967,9 @@
                             defaultValue={currentPass}
                             onBlur={(e) => handleSaveSquadPasswords(code, e.target.value)}
                             placeholder="Mật khẩu"
-                            className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-center"
+                            className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-center focus:ring-2 focus:ring-green-500 outline-none"
                           />
-                          <div className="text-[7px] text-slate-400 text-center uppercase tracking-wider font-extrabold">Nhấn ra ngoài để tự lưu</div>
+                          <div className="text-[7px] text-slate-400 text-center uppercase tracking-wider font-extrabold">Nhấn ra ngoài để lưu</div>
                         </div>
                       );
                     })}
@@ -2395,9 +2403,149 @@
             </div>
           )}
 
+          {/* ===================== MODAL CHỈNH SỬA NHẬT KÝ CHO BCH TỔNG ===================== */}
+          {role === 'general' && editingReportId && selectedStudent && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 animate-fadeIn">
+              <div className="absolute inset-0" onClick={() => {
+                setEditingReportId(null);
+                setSelectedStudent(null);
+                setNewActivity('');
+                setNewComment('');
+              }}></div>
+
+              <div className="relative bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl z-10 animate-scaleIn overflow-hidden border border-amber-500/30">
+                
+                {/* Header Modal */}
+                <div className="bg-gradient-to-r from-amber-600 to-amber-700 p-4 md:p-5 flex justify-between items-center shrink-0">
+                  <div className="text-white">
+                    <span className="bg-amber-900/50 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider border border-amber-500/30">
+                      Đặc quyền sửa chữa BCH Tổng
+                    </span>
+                    <h3 className="text-sm md:text-base font-black mt-1 flex items-center gap-2">
+                      <span>✏️ Chỉnh Sửa Dữ Liệu:</span>
+                      <span className="text-amber-100">{selectedStudent.name}</span>
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingReportId(null);
+                      setSelectedStudent(null);
+                      setNewActivity('');
+                      setNewComment('');
+                    }}
+                    className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors"
+                  >
+                    <span className="text-xl font-bold">&times;</span>
+                  </button>
+                </div>
+
+                {/* Form Body */}
+                <div className="p-4 md:p-6 overflow-y-auto">
+                  <form onSubmit={handleAddNewReport} className="space-y-4">
+                    <div className="grid sm:grid-cols-2 gap-3.5">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Ngày Đánh Giá</label>
+                        <input 
+                          type="date" 
+                          className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs bg-slate-50 outline-none" 
+                          value={newReportDate} 
+                          onChange={(e) => setNewReportDate(e.target.value)} 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Hoạt động / Chuyên đề</label>
+                        <input 
+                          type="text" 
+                          required 
+                          className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs outline-none" 
+                          value={newActivity} 
+                          onChange={(e) => setNewActivity(e.target.value)} 
+                        />
+                      </div>
+                    </div>
+
+                    {selectedStudent.id !== 'COMMON' && (
+                      <div className="grid sm:grid-cols-2 gap-3.5">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Nền nếp tác phong</label>
+                          <select 
+                            className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs bg-slate-50 outline-none" 
+                            value={newBehaviorRating} 
+                            onChange={(e) => setNewBehaviorRating(e.target.value)}
+                          >
+                            <option value="Xuất Sắc">Xuất Sắc 🎖️</option>
+                            <option value="Tốt">Tốt 👍</option>
+                            <option value="Khá">Khá 👌</option>
+                            <option value="Đạt">Trung bình / Đạt</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Sức khỏe & Thể chất</label>
+                          <select 
+                            className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs bg-slate-50 outline-none" 
+                            value={newPhysicalRating} 
+                            onChange={(e) => setNewPhysicalRating(e.target.value)}
+                          >
+                            <option value="Xuất Sắc">Xuất Sắc 🎖️</option>
+                            <option value="Tốt">Tốt 👍</option>
+                            <option value="Khá">Khá 👌</option>
+                            <option value="Đạt">Trung bình / Đạt</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Đường dẫn ảnh trực tiếp / Link Google Drive</label>
+                      <input 
+                        type="text" 
+                        className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs outline-none" 
+                        value={newImage} 
+                        onChange={(e) => setNewImage(e.target.value)} 
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Nội dung nhận xét</label>
+                      <textarea 
+                        rows="3" 
+                        className="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs outline-none" 
+                        value={newComment} 
+                        onChange={(e) => setNewComment(e.target.value)}
+                      ></textarea>
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <button 
+                        type="submit" 
+                        disabled={isUploadingToDrive} 
+                        className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-3 px-4 rounded-xl shadow-md text-xs active-scale transition-colors"
+                      >
+                        Lưu Thay Đổi Dữ Liệu
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => { 
+                          setEditingReportId(null); 
+                          setSelectedStudent(null); 
+                          setNewActivity('');
+                          setNewComment('');
+                        }} 
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 rounded-xl text-xs font-bold border border-slate-300 active-scale transition-colors"
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+              </div>
+            </div>
+          )}
+
           {/* ===================== DIALOG XÁC NHẬN AN TOÀN TRƯỚC KHI XÓA ===================== */}
           {confirmModal.isOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 animate-fadeIn">
+            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-4 animate-fadeIn">
               <div className="absolute inset-0" onClick={() => setConfirmModal({ isOpen: false, type: '', id: '', message: '' })}></div>
               
               <div className="relative bg-white rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl border border-slate-200 z-10 animate-scaleIn">
