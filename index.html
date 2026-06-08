@@ -91,10 +91,43 @@
       transform: scale(0.96);
     }
   </style>
+
+  <style>
+    html{
+      -webkit-text-size-adjust:100%;
+      text-size-adjust:100%;
+    }
+    *{
+      box-sizing:border-box;
+    }
+    img,video,canvas,svg{
+      max-width:100%;
+      height:auto;
+    }
+    .responsive-scale{
+      width:100%;
+      max-width:1600px;
+      margin:0 auto;
+    }
+    @media (max-width: 768px){
+      body{
+        font-size:14px;
+      }
+      input,select,textarea,button{
+        font-size:16px !important;
+      }
+    }
+    @media (min-width: 769px){
+      body{
+        min-width:1024px;
+      }
+    }
+  </style>
+
 </head>
 <body class="text-slate-800 antialiased selection:bg-green-800 selection:text-white">
 
-  <div id="root"></div>
+  <div id="root" class="responsive-scale"></div>
 
   <!-- Khởi tạo Firebase Module nguyên bản ngoài Babel để tránh lỗi 'require is not defined' trên GitHub -->
   <script type="module">
@@ -292,6 +325,17 @@
 
     const DEFAULT_REPORTS = [
       {
+        id: 'r-global-1',
+        studentId: 'GLOBAL_COMMON',
+        date: '2026-06-01',
+        activity: 'Lễ Tiếp Nhận & Khai Giảng Khóa Huấn Luyện',
+        squad: 'ALL',
+        behaviorRating: '',
+        physicalRating: '',
+        comment: 'Ban Chỉ Huy Tổng xin trân trọng thông báo: Đã hoàn tất công tác tiếp nhận toàn bộ các chiến sĩ nhí an toàn. Các tiểu đội đã được phân bổ quân số đầy đủ, nhận quân trang và đang bắt đầu sinh hoạt làm quen tại hội trường lớn. Kính chúc quý phụ huynh an tâm công tác.',
+        image: 'https://images.unsplash.com/photo-1531685250784-7569952593d2?auto=format&fit=crop&q=80&w=600',
+      },
+      {
         id: 'r-1',
         studentId: 'CS001',
         date: '2026-06-01',
@@ -394,7 +438,7 @@
       const [loggedInSquad, setLoggedInSquad] = useState(null);
 
       // Biểu mẫu viết nhận xét, đánh giá rèn luyện
-      const [selectedStudent, setSelectedStudent] = useState(null); // Có thể là student object hoặc object đặc biệt { id: 'COMMON', name: 'Cả Tiểu Đội' }
+      const [selectedStudent, setSelectedStudent] = useState(null); // Có thể là student object, { id: 'COMMON' } hoặc { id: 'GLOBAL_COMMON' }
       const [newReportDate, setNewReportDate] = useState(new Date().toISOString().split('T')[0]);
       const [newActivity, setNewActivity] = useState('');
       const [newBehaviorRating, setNewBehaviorRating] = useState('Tốt');
@@ -585,47 +629,33 @@
       // HÀM HELPER TẢI ẢNH AN TOÀN VƯỢT CORS PROXY DÀNH CHO GOOGLE DRIVE
       // ----------------------------------------------------------------------
       const fetchImageAsBlob = async (url) => {
-        // 1. Thử tải trực tiếp trước (phù hợp cho Unsplash, Imgur có CORS mở)
         try {
           const response = await fetch(url);
-          if (response.ok) {
-            return await response.blob();
-          }
+          if (response.ok) return await response.blob();
         } catch (e) {
           console.warn("Tải trực tiếp thất bại do lỗi CORS, kích hoạt CORS Proxy chuyên dụng cho url:", url);
         }
 
-        // 2. Thử qua CORS Proxy của wsrv.nl - Đây là giải pháp bypass CORS tốt nhất cho tập tin ảnh,
-        // hoạt động bằng cách yêu cầu máy chủ trung gian của wsrv.nl tải ảnh từ Google Drive về,
-        // sau đó trả ngược lại client với tiêu đề CORS mở cho phép truy cập tự do.
         try {
           const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(url)}`;
           const response = await fetch(proxyUrl);
-          if (response.ok) {
-            return await response.blob();
-          }
+          if (response.ok) return await response.blob();
         } catch (e) {
           console.warn("wsrv.nl thất bại, chuyển hướng cổng dự phòng corsproxy.io...");
         }
 
-        // 3. Thử qua CORS Proxy 2: corsproxy.io (Hỗ trợ tốt các đường dẫn Drive)
         try {
           const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
           const response = await fetch(proxyUrl);
-          if (response.ok) {
-            return await response.blob();
-          }
+          if (response.ok) return await response.blob();
         } catch (e) {
           console.warn("Cổng corsproxy.io gặp sự cố, đang chuyển sang cổng api.allorigins.win...");
         }
 
-        // 4. Thử qua CORS Proxy 3: api.allorigins.win
         try {
           const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
           const response = await fetch(proxyUrl);
-          if (response.ok) {
-            return await response.blob();
-          }
+          if (response.ok) return await response.blob();
         } catch (e) {
           console.error("Mọi nỗ lực vượt CORS qua proxy đều thất bại:", url);
         }
@@ -654,18 +684,14 @@
           let successCount = 0;
           let failCount = 0;
 
-          // Duyệt qua toàn bộ báo cáo có chứa ảnh
           for (let i = 0; i < reportsWithImages.length; i++) {
             const report = reportsWithImages[i];
             let imageUrl = parseAndConvertDriveUrl(report.image);
 
             try {
-              // Sử dụng cơ chế tải Blob an toàn tích hợp CORS Proxy
               const blob = await fetchImageAsBlob(imageUrl);
-              
-              // Định dạng tên file lưu trữ: CSN2026_YYYYMMDD_TenHocVien_STT.jpg
               const dateStr = report.date.replace(/-/g, '');
-              let studentName = report.studentId === 'COMMON' ? `Chung_TD${report.squad}` : report.studentId;
+              let studentName = report.studentId === 'COMMON' ? `Chung_TD${report.squad}` : (report.studentId === 'GLOBAL_COMMON' ? 'THONG_BAO_TOAN_KHOA' : report.studentId);
               const safeName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
               const filename = `CSN2026_${dateStr}_${safeName}_${i+1}.jpg`;
               
@@ -677,7 +703,6 @@
             }
           }
 
-          // Kiểm tra và xuất file ZIP nếu có ít nhất 1 hình ảnh tải được
           if (successCount > 0) {
             showToast(`Đang nén và đóng gói ZIP cho ${successCount} ảnh thành công...`);
             const content = await zip.generateAsync({type:"blob"});
@@ -704,7 +729,6 @@
       // BỘ LỌC TÌM KIẾM HỌC VIÊN TOÀN KHÓA
       // ----------------------------------------------------------------------
       const filteredStudents = students.filter(s => {
-        // Lọc theo tiểu đội trước
         if (squadFilter !== 'ALL') {
           const targetSquad = parseInt(squadFilter);
           if (targetSquad === 0) {
@@ -714,7 +738,6 @@
           }
         }
 
-        // Lọc theo từ khóa tìm kiếm
         const term = searchTerm.toLowerCase().trim();
         if (!term) return true;
         return (
@@ -832,9 +855,16 @@
       const handleAddNewReport = async (e) => {
         e.preventDefault();
         if (!selectedStudent) {
-          showToast('Vui lòng chọn một chiến sĩ nhí hoặc Nhận xét chung toàn tiểu đội!', 'error');
+          showToast('Vui lòng chọn đối tượng để gửi nhận xét!', 'error');
           return;
         }
+        
+        // KIỂM TRA QUYỀN TRUY CẬP ĐĂNG THÔNG BÁO GLOBAL
+        if (selectedStudent.id === 'GLOBAL_COMMON' && role !== 'general') {
+            showToast('Chỉ có Ban Chỉ Huy Tổng mới có quyền gửi Thông Báo Toàn Khóa!', 'error');
+            return;
+        }
+
         if (!newActivity.trim()) {
           showToast('Vui lòng điền Tên hoạt động!', 'error');
           return;
@@ -851,7 +881,7 @@
         }
 
         // Đơn vị chỉ định để gắn vào báo cáo
-        const targetSquad = role === 'commander' ? loggedInSquad : selectedStudent.squad;
+        const targetSquad = selectedStudent.id === 'GLOBAL_COMMON' ? 'ALL' : (role === 'commander' ? loggedInSquad : selectedStudent.squad);
 
         if (role === 'commander' && selectedStudent.id !== 'COMMON' && selectedStudent.squad !== loggedInSquad) {
           showToast('Bạn không có thẩm quyền đối với học viên tiểu đội khác!', 'error');
@@ -887,7 +917,7 @@
             const reportRef = fb.doc(db, basePath, 'reports', newId);
             await fb.setDoc(reportRef, {
               id: newId,
-              studentId: selectedStudent.id, // Sẽ lưu là 'COMMON' hoặc mã học viên 'CSxxx'
+              studentId: selectedStudent.id, // Lưu trữ: 'COMMON', 'GLOBAL_COMMON' hoặc 'CSxxx'
               date: newReportDate,
               activity: newActivity,
               squad: targetSquad,
@@ -897,7 +927,7 @@
               image: processedImageUrl
             });
 
-            showToast(`Đã lưu nhận xét thành công!`);
+            showToast(`Đã gửi đánh giá/thông báo thành công lên hệ thống!`);
             
             setNewActivity('');
             setNewComment('');
@@ -1091,7 +1121,7 @@
             setNewComment('');
             setSelectedStudent(null);
           }
-          showToast('Đã xóa vĩnh viễn nhật ký rèn luyện.');
+          showToast('Đã xóa vĩnh viễn dữ liệu báo cáo.');
         } catch (error) {
           showToast('Lỗi khi thực hiện xóa nhật ký!', 'error');
         }
@@ -1099,7 +1129,9 @@
 
       const handleStartEditReport = (report) => {
         let student = null;
-        if (report.studentId === 'COMMON') {
+        if (report.studentId === 'GLOBAL_COMMON') {
+          student = { id: 'GLOBAL_COMMON', name: 'Nhận xét Chung Tất Cả Tiểu Đội', squad: 'ALL' };
+        } else if (report.studentId === 'COMMON') {
           student = { id: 'COMMON', name: `Nhận xét Chung Toàn Tiểu Đội ${report.squad}`, squad: report.squad };
         } else {
           student = students.find(s => s.id === report.studentId) || { id: report.studentId, name: `Chiến sĩ (${report.studentId})`, squad: report.squad };
@@ -1110,15 +1142,15 @@
         setNewReportDate(report.date);
         setNewActivity(report.activity);
         setNewComment(report.comment);
-        setNewBehaviorRating(report.behaviorRating);
-        setNewPhysicalRating(report.physicalRating);
+        setNewBehaviorRating(report.behaviorRating || 'Tốt');
+        setNewPhysicalRating(report.physicalRating || 'Tốt');
         setNewImage(report.image);
         setCustomImageFile(null);
         
         if (role !== 'general') {
             window.scrollTo({ top: 200, behavior: 'smooth' });
         }
-        showToast(`Đã nạp dữ liệu rèn luyện của: ${student ? student.name : ''}`);
+        showToast(`Đã nạp dữ liệu sửa chữa cho: ${student ? student.name : ''}`);
       };
 
       const handleLogout = () => {
@@ -1509,7 +1541,8 @@
                     {(() => {
                       const filteredReports = reports.filter(r => 
                         r.studentId === selectedChild.id || 
-                        (r.studentId === 'COMMON' && selectedChild.squad && r.squad === selectedChild.squad)
+                        (r.studentId === 'COMMON' && selectedChild.squad && r.squad === selectedChild.squad) ||
+                        r.studentId === 'GLOBAL_COMMON' // THÊM HIỂN THỊ THÔNG BÁO TỪ BCH TỔNG
                       );
 
                       if (filteredReports.length === 0) {
@@ -1530,10 +1563,13 @@
                         <div className="space-y-4">
                           {filteredReports.map((report) => {
                             const isCommon = report.studentId === 'COMMON';
+                            const isGlobal = report.studentId === 'GLOBAL_COMMON';
+                            
                             return (
                               <div 
                                 key={report.id} 
                                 className={`bg-white rounded-2xl overflow-hidden shadow border flex flex-col sm:flex-row hover:shadow-md transition-shadow duration-300 ${
+                                  isGlobal ? 'border-red-500/70 ring-2 ring-red-100' : 
                                   isCommon ? 'border-amber-400/70 ring-2 ring-amber-100' : 'border-slate-100'
                                 }`}
                               >
@@ -1547,7 +1583,9 @@
                                       className="w-full h-full object-cover cursor-zoom-in group-hover:scale-105 transition-all duration-300"
                                       onClick={() => setZoomedImage({
                                         url: parseAndConvertDriveUrl(report.image),
-                                        title: isCommon 
+                                        title: isGlobal 
+                                          ? `[THÔNG BÁO TỔNG KHÓA] - ${report.activity} (${report.date})`
+                                          : isCommon 
                                           ? `[HÌNH CHUNG TIỂU ĐỘI ${report.squad}] - Hoạt động: ${report.activity} (${report.date})`
                                           : `${selectedChild.name} - Hoạt động: ${report.activity} (${report.date})`
                                       })}
@@ -1563,7 +1601,9 @@
                                   <div className="space-y-2">
                                     <div className="flex flex-wrap justify-between items-start gap-1.5">
                                       <span className={`font-extrabold text-[9px] px-2.5 py-1 rounded-lg flex items-center gap-1 border ${
-                                        isCommon 
+                                        isGlobal
+                                          ? 'bg-red-50 text-red-950 border-red-200'
+                                          : isCommon 
                                           ? 'bg-amber-100 text-amber-950 border-amber-200' 
                                           : 'bg-green-100 text-green-950 border-green-200'
                                       }`}>
@@ -1572,9 +1612,13 @@
                                       </span>
 
                                       {/* Cờ thông báo hoạt động chung */}
-                                      {isCommon ? (
+                                      {isGlobal ? (
+                                        <span className="bg-red-600 text-white text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-wide shadow-sm animate-pulse">
+                                          🚨 THÔNG BÁO TỪ BCH TỔNG
+                                        </span>
+                                      ) : isCommon ? (
                                         <span className="bg-amber-500 text-white text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-wide shadow-sm animate-pulse">
-                                          ⭐️ HOẠT ĐỘNG CHUNG CỦA TIỂU ĐỘI
+                                          ⭐️ HOẠT ĐỘNG CHUNG TIỂU ĐỘI
                                         </span>
                                       ) : (
                                         <div className="flex gap-1">
@@ -1589,16 +1633,18 @@
                                     </div>
 
                                     <div className="text-xs font-bold text-slate-800 flex items-center gap-1 pt-1">
-                                      📌 Hoạt động: <span className={`${isCommon ? 'text-amber-700' : 'text-custom-primary'} font-extrabold`}>{report.activity}</span>
+                                      📌 Hoạt động/Tin Tức: <span className={`${isGlobal ? 'text-red-700' : isCommon ? 'text-amber-700' : 'text-custom-primary'} font-extrabold`}>{report.activity}</span>
                                     </div>
 
-                                    <p className="text-xs text-slate-600 leading-relaxed font-semibold italic">
+                                    <p className={`text-xs leading-relaxed font-semibold ${isGlobal ? 'text-slate-800' : 'text-slate-600 italic'}`}>
                                       " {report.comment} "
                                     </p>
                                   </div>
 
                                   <div className="flex justify-between items-center pt-2.5 border-t border-slate-100 text-[10px] font-bold text-slate-400">
-                                    <span>Người ghi: <strong className="text-custom-primary-dark">Tiểu Đội Trưởng {report.squad}</strong></span>
+                                    <span>Người ghi: <strong className={isGlobal ? "text-red-700 font-black uppercase" : "text-custom-primary-dark"}>
+                                        {isGlobal ? 'Ban Chỉ Huy Tổng' : `Tiểu Đội Trưởng ${report.squad}`}
+                                    </strong></span>
                                     <span className="flex items-center gap-0.5 text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
                                       <Heart />
                                       <span>Đồng hành</span>
@@ -1679,7 +1725,7 @@
                     <div className="bg-white rounded-2xl shadow p-5 space-y-4">
                       <h3 className="text-xs font-black text-slate-700 tracking-wider uppercase flex justify-between items-center">
                         <span>Danh sách đối tượng</span>
-                        <span className="text-[10px] text-slate-400 normal-case font-normal">(Chọn để viết hoặc đăng ảnh chung)</span>
+                        <span className="text-[10px] text-slate-400 normal-case font-normal">(Chọn để viết hoặc đăng ảnh)</span>
                       </h3>
                       
                       <div className="divide-y divide-slate-100 max-h-[450px] overflow-y-auto pr-1">
@@ -1970,23 +2016,26 @@
 
                 </div>
 
-                {/* DANH SÁCH NHẬT KÝ ĐÃ GHI CỦA TIỂU ĐỘI */}
+                {/* DANH SÁCH NHẬT KÝ ĐÃ GHI CỦA TIỂU ĐỘI (Bao gồm Thông báo Global) */}
                 <div className="bg-white rounded-2xl shadow p-4 md:p-5 border border-slate-100 space-y-4 mt-6">
                   <h3 className="text-xs md:text-sm font-black text-slate-800 flex items-center gap-1.5 uppercase">
                     <ImageIcon className="w-5 h-5 text-custom-primary" />
-                    <span>Lịch sử hoạt động của Tiểu Đội {loggedInSquad} ({reports.filter(r => r.squad === loggedInSquad).length} ngày)</span>
+                    <span>Bảng Tin Tiểu Đội {loggedInSquad} & Chỉ Đạo Cấp Trên</span>
                   </h3>
                   
-                  {reports.filter(r => r.squad === loggedInSquad).length === 0 ? (
+                  {reports.filter(r => r.squad === loggedInSquad || r.studentId === 'GLOBAL_COMMON').length === 0 ? (
                     <div className="p-8 text-center text-slate-400 border border-dashed border-slate-200 rounded-xl space-y-1">
                       <div className="text-2xl">📭</div>
-                      <p className="text-xs">Tiểu đội của bạn chưa lưu nhật ký hoạt động nào.</p>
+                      <p className="text-xs">Chưa có nhật ký hoạt động hay thông báo nào.</p>
                     </div>
                   ) : (
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {reports.filter(r => r.squad === loggedInSquad).map(report => {
+                      {reports.filter(r => r.squad === loggedInSquad || r.studentId === 'GLOBAL_COMMON').map(report => {
                         const isCommon = report.studentId === 'COMMON';
-                        const student = isCommon 
+                        const isGlobal = report.studentId === 'GLOBAL_COMMON';
+                        const student = isGlobal 
+                          ? { name: `📢 THÔNG BÁO TỪ BCH TỔNG` }
+                          : isCommon
                           ? { name: `Nhận xét Chung Toàn Tiểu Đội ${report.squad}` } 
                           : (students.find(s => s.id === report.studentId) || { name: `Chiến sĩ (${report.studentId})` });
                         
@@ -1994,16 +2043,17 @@
                           <div 
                             key={report.id} 
                             className={`rounded-xl p-4 border space-y-3 flex flex-col justify-between hover:shadow-sm transition-all duration-300 ${
+                              isGlobal ? 'bg-red-50 border-red-300 ring-1 ring-red-100' :
                               isCommon ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200'
                             }`}
                           >
                             <div className="space-y-2">
                               <div className="flex justify-between items-center border-b border-slate-200/50 pb-2">
-                                <span className={`font-extrabold text-xs ${isCommon ? 'text-amber-800' : 'text-emerald-950'}`}>
+                                <span className={`font-extrabold text-xs ${isGlobal ? 'text-red-700' : isCommon ? 'text-amber-800' : 'text-emerald-950'}`}>
                                   {student ? student.name : 'Chiến sĩ dã chiến'}
                                 </span>
                                 <span className="text-[10px] text-slate-400 font-mono">
-                                  {isCommon ? 'CHUNG' : `ID: ${report.studentId}`}
+                                  {isGlobal ? 'TOÀN KHÓA' : isCommon ? 'CHUNG TĐ' : `ID: ${report.studentId}`}
                                 </span>
                               </div>
                               <div className="text-[11px] font-bold text-slate-700">📌 Chuyên đề: {report.activity}</div>
@@ -2018,7 +2068,9 @@
                                   className="w-full h-full object-cover cursor-zoom-in hover:opacity-90 transition-all" 
                                   onClick={() => setZoomedImage({
                                     url: parseAndConvertDriveUrl(report.image),
-                                    title: isCommon
+                                    title: isGlobal
+                                      ? `[THÔNG BÁO TỔNG KHÓA] - Hoạt động: ${report.activity} (${report.date})`
+                                      : isCommon
                                       ? `[HÌNH CHUNG TIỂU ĐỘI ${report.squad}] - Hoạt động: ${report.activity} (${report.date})`
                                       : `${student ? student.name : 'Chiến sĩ'} - Hoạt động: ${report.activity} (${report.date})`
                                   })}
@@ -2029,7 +2081,7 @@
                             <div className="space-y-2 pt-2 border-t border-slate-200/50">
                               <div className="flex justify-between items-center text-[9px]">
                                 <span className="text-slate-400 font-semibold">{report.date}</span>
-                                {!isCommon && (
+                                {!isCommon && !isGlobal && (
                                   <div className="flex gap-1">
                                     <span className="bg-green-100 text-green-800 px-1 py-0.5 rounded text-[8px] font-bold">Tác phong: {report.behaviorRating}</span>
                                     <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[8px] font-bold">Thể chất: {report.physicalRating}</span>
@@ -2037,29 +2089,32 @@
                                 )}
                               </div>
 
-                              <div className="flex gap-2 pt-1.5 border-t border-slate-200/30">
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartEditReport(report)}
-                                  className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold py-1.5 px-2 rounded-lg text-[10px] border border-amber-200 transition-colors flex items-center justify-center gap-1 active-scale shadow-sm"
-                                >
-                                  ✏️ Sửa
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setConfirmModal({
-                                      isOpen: true,
-                                      type: 'report',
-                                      id: report.id,
-                                      message: `Bạn có chắc muốn xóa báo cáo ngày ${report.date} này của ${isCommon ? 'tiểu đội' : 'học sinh'} khỏi đám mây?`
-                                    });
-                                  }}
-                                  className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-1.5 px-2 rounded-lg text-[10px] border border-red-200 transition-colors flex items-center justify-center gap-1 active-scale shadow-sm"
-                                >
-                                  🗑️ Xóa
-                                </button>
-                              </div>
+                              {/* Commander không thể sửa/xóa thông báo của BCH Tổng */}
+                              {!isGlobal && (
+                                <div className="flex gap-2 pt-1.5 border-t border-slate-200/30">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartEditReport(report)}
+                                    className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold py-1.5 px-2 rounded-lg text-[10px] border border-amber-200 transition-colors flex items-center justify-center gap-1 active-scale shadow-sm"
+                                  >
+                                    ✏️ Sửa
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setConfirmModal({
+                                        isOpen: true,
+                                        type: 'report',
+                                        id: report.id,
+                                        message: `Bạn có chắc muốn xóa báo cáo ngày ${report.date} này của ${isCommon ? 'tiểu đội' : 'học sinh'} khỏi đám mây?`
+                                      });
+                                    }}
+                                    className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-1.5 px-2 rounded-lg text-[10px] border border-red-200 transition-colors flex items-center justify-center gap-1 active-scale shadow-sm"
+                                  >
+                                    🗑️ Xóa
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
@@ -2591,26 +2646,41 @@
 
                {/* GIÁM SÁT TOÀN BỘ BÁO CÁO CỦA CÁC TIỂU ĐỘI */}
                 <div className="bg-white rounded-2xl shadow p-4 md:p-5 border border-slate-100 space-y-4">
-                  <div className="border-b border-slate-100 pb-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5">
+                  <div className="border-b border-slate-100 pb-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <h3 className="text-xs md:text-sm font-black text-slate-700 tracking-wider uppercase flex items-center gap-1.5">
                       <img src="Logo.png" alt="Icon" className="w-5 h-5 object-cover rounded-full" />
                       <span>Giám Sát Báo Cáo Của Toàn Bộ Các Tiểu Đội (Giám Sát Tổng)</span>
                     </h3>
                     
                     {/* BỘ NÚT CHỨC NĂNG CỦA GIÁM SÁT TỔNG */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                        <span className="text-[10px] font-bold text-custom-primary uppercase">Cập nhật thời gian thực</span>
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                        <button
+                            onClick={() => {
+                                setSelectedStudent({ id: 'GLOBAL_COMMON', name: 'Nhận xét Chung Tất Cả Tiểu Đội', squad: 'ALL' });
+                                setEditingReportId(null);
+                                setNewReportDate(new Date().toISOString().split('T')[0]);
+                                setNewActivity('');
+                                setNewComment('');
+                                setNewImage('');
+                                setNewBehaviorRating('Tốt');
+                                setNewPhysicalRating('Tốt');
+                            }}
+                            className="flex-1 sm:flex-initial bg-amber-500 hover:bg-amber-600 text-white text-[10px] md:text-xs font-extrabold px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-colors shadow-sm active-scale border border-amber-600"
+                        >
+                            📢 <span>Viết Thông Báo Toàn Khóa</span>
+                        </button>
+
                         <button
                             onClick={handleDownloadAllImages}
                             disabled={isDownloadingAll}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] md:text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-50 active-scale"
+                            className="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] md:text-xs font-bold px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-colors shadow-sm disabled:opacity-50 active-scale"
                         >
                             {isDownloadingAll ? (
                                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                             ) : (
                                <DownloadIcon className="w-4 h-4" />
                             )}
-                            <span>{isDownloadingAll ? 'Đang nén ZIP...' : 'Tải toàn bộ ảnh'}</span>
+                            <span>{isDownloadingAll ? 'Đang nén ZIP...' : 'Tải ảnh'}</span>
                         </button>
                     </div>
                   </div>
@@ -2623,23 +2693,27 @@
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {reports.map((report) => {
                         const isCommon = report.studentId === 'COMMON';
-                        const student = isCommon 
+                        const isGlobal = report.studentId === 'GLOBAL_COMMON';
+                        const student = isGlobal
+                          ? { name: `📢 THÔNG BÁO TỪ BCH TỔNG` }
+                          : isCommon 
                           ? { name: `Nhận xét Chung Toàn Tiểu Đội ${report.squad}` } 
                           : (students.find(s => s.id === report.studentId) || { name: `Chiến sĩ (${report.studentId})` });
                         return (
                           <div 
                             key={report.id} 
                             className={`rounded-xl p-4 border space-y-3 flex flex-col justify-between hover:shadow-sm ${
+                              isGlobal ? 'bg-red-50 border-red-300 ring-1 ring-red-100' :
                               isCommon ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200'
                             }`}
                           >
                             <div className="space-y-2">
                               <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                                <span className={`font-extrabold text-xs ${isCommon ? 'text-amber-800' : 'text-custom-primary'}`}>
+                                <span className={`font-extrabold text-xs ${isGlobal ? 'text-red-700' : isCommon ? 'text-amber-800' : 'text-custom-primary'}`}>
                                   {student.name}
                                 </span>
-                                <span className="text-[8px] bg-custom-accent text-green-950 font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">
-                                  TĐ {report.squad}
+                                <span className="text-[8px] bg-custom-accent text-green-950 font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 ml-2">
+                                  {isGlobal ? 'TOÀN KHÓA' : `TĐ ${report.squad}`}
                                 </span>
                               </div>
                               <div className="text-[10px] font-bold text-slate-700">📌 Chuyên đề: {report.activity}</div>
@@ -2647,7 +2721,7 @@
                             </div>
 
                             {report.image && (
-                              <img src={parseAndConvertDriveUrl(report.image)} alt="Báo cáo" className="w-full h-24 object-cover rounded-lg border border-slate-300 cursor-zoom-in" onClick={() => setZoomedImage({ url: parseAndConvertDriveUrl(report.image), title: `Báo cáo giám sát TĐ ${report.squad}` })} />
+                              <img src={parseAndConvertDriveUrl(report.image)} alt="Báo cáo" className="w-full h-24 object-cover rounded-lg border border-slate-300 cursor-zoom-in" onClick={() => setZoomedImage({ url: parseAndConvertDriveUrl(report.image), title: isGlobal ? `[THÔNG BÁO TỔNG] - ${report.activity}` : `Báo cáo giám sát TĐ ${report.squad}` })} />
                             )}
 
                             <div className="pt-2 border-t border-slate-200/50 flex justify-between items-center text-[9px] font-bold">
@@ -2744,7 +2818,8 @@
                   {(() => {
                     const studentReports = reports.filter(r => 
                       r.studentId === viewingStudent.id || 
-                      (r.studentId === 'COMMON' && viewingStudent.squad && r.squad === viewingStudent.squad)
+                      (r.studentId === 'COMMON' && viewingStudent.squad && r.squad === viewingStudent.squad) ||
+                      r.studentId === 'GLOBAL_COMMON' // Xem cả thông báo toàn khóa
                     );
 
                     if (studentReports.length === 0) {
@@ -2761,17 +2836,20 @@
                       <div className="grid sm:grid-cols-2 gap-4 animate-fadeIn">
                         {studentReports.map((report) => {
                           const isCommon = report.studentId === 'COMMON';
+                          const isGlobal = report.studentId === 'GLOBAL_COMMON';
                           return (
-                            <div key={report.id} className={`bg-white rounded-xl border p-4 shadow-sm flex flex-col justify-between space-y-3 ${isCommon ? 'border-amber-200 ring-1 ring-amber-100' : 'border-slate-200'}`}>
+                            <div key={report.id} className={`bg-white rounded-xl border p-4 shadow-sm flex flex-col justify-between space-y-3 ${isGlobal ? 'border-red-200 ring-1 ring-red-100' : isCommon ? 'border-amber-200 ring-1 ring-amber-100' : 'border-slate-200'}`}>
                               <div className="space-y-2">
                                 <div className="flex justify-between items-start">
                                   <span className={`text-[9px] font-black px-2 py-1 rounded-md border flex items-center gap-1 ${
-                                    isCommon ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-green-100 text-green-800 border-green-200'
+                                    isGlobal ? 'bg-red-100 text-red-800 border-red-200' : isCommon ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-green-100 text-green-800 border-green-200'
                                   }`}>
                                     <Calendar />
                                     <span>{report.date}</span>
                                   </span>
-                                  {isCommon ? (
+                                  {isGlobal ? (
+                                    <span className="bg-red-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm">BCH TỔNG</span>
+                                  ) : isCommon ? (
                                     <span className="bg-amber-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm">CHUNG TĐ {report.squad}</span>
                                   ) : (
                                     <span className="bg-slate-100 text-slate-500 text-[8px] font-bold px-1.5 py-0.5 rounded border border-slate-200">CÁ NHÂN</span>
@@ -2790,7 +2868,9 @@
                                     className="w-full h-full object-cover cursor-zoom-in group-hover:scale-105 transition-transform"
                                     onClick={() => setZoomedImage({
                                       url: parseAndConvertDriveUrl(report.image),
-                                      title: isCommon 
+                                      title: isGlobal 
+                                        ? `[THÔNG BÁO TỔNG] - ${report.activity} (${report.date})`
+                                        : isCommon 
                                         ? `[CHUNG TĐ ${report.squad}] - ${report.activity} (${report.date})`
                                         : `${viewingStudent.name} - ${report.activity} (${report.date})`
                                     })}
@@ -2798,7 +2878,7 @@
                                 </div>
                               )}
 
-                              {!isCommon && (
+                              {!isCommon && !isGlobal && (
                                 <div className="flex gap-1 pt-2 border-t border-slate-100">
                                   <span className="bg-emerald-50 text-emerald-700 text-[9px] font-bold px-2 py-0.5 rounded border border-emerald-100">Nền nếp: {report.behaviorRating}</span>
                                   <span className="bg-blue-50 text-blue-700 text-[9px] font-bold px-2 py-0.5 rounded border border-blue-100">Thể lực: {report.physicalRating}</span>
@@ -2815,8 +2895,8 @@
             </div>
           )}
 
-          {/* ===================== MODAL CHỈNH SỬA NHẬT KÝ CHO BCH TỔNG ===================== */}
-          {role === 'general' && editingReportId && selectedStudent && (
+          {/* ===================== MODAL CHỈNH SỬA & TẠO THÔNG BÁO CHO BCH TỔNG ===================== */}
+          {role === 'general' && selectedStudent && (editingReportId || selectedStudent.id === 'GLOBAL_COMMON') && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 animate-fadeIn">
               <div className="absolute inset-0" onClick={() => {
                 setEditingReportId(null);
@@ -2831,10 +2911,10 @@
                 <div className="bg-gradient-to-r from-amber-600 to-amber-700 p-4 md:p-5 flex justify-between items-center shrink-0 text-white">
                   <div>
                     <span className="bg-amber-900/50 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider border border-amber-500/30">
-                      Đặc quyền sửa chữa BCH Tổng
+                      Đặc quyền Ban Chỉ Huy Tổng
                     </span>
                     <h3 className="text-sm md:text-base font-black mt-1 flex items-center gap-2">
-                      <span>✏️ Chỉnh Sửa Dữ Liệu:</span>
+                      <span>{editingReportId ? '✏️ Chỉnh Sửa Dữ Liệu:' : '📢 Đăng Thông Báo Mới:'}</span>
                       <span className="text-amber-100">{selectedStudent.name}</span>
                     </h3>
                   </div>
@@ -2869,6 +2949,7 @@
                         <input 
                           type="text" 
                           required 
+                          placeholder={selectedStudent.id === 'GLOBAL_COMMON' ? 'Nhập tiêu đề thông báo...' : ''}
                           className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs outline-none" 
                           value={newActivity} 
                           onChange={(e) => setNewActivity(e.target.value)} 
@@ -2876,7 +2957,7 @@
                       </div>
                     </div>
 
-                    {selectedStudent.id !== 'COMMON' && (
+                    {selectedStudent.id !== 'COMMON' && selectedStudent.id !== 'GLOBAL_COMMON' && (
                       <div className="grid sm:grid-cols-2 gap-3.5">
                         <div>
                           <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Nền nếp tác phong</label>
@@ -2941,9 +3022,10 @@
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Nội dung nhận xét</label>
+                      <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">Nội dung {selectedStudent.id === 'GLOBAL_COMMON' ? 'thông báo' : 'nhận xét'}</label>
                       <textarea 
                         rows="3" 
+                        placeholder={selectedStudent.id === 'GLOBAL_COMMON' ? 'Ví dụ: Ban Chỉ Huy Tổng xin trân trọng thông báo đến toàn thể phụ huynh...' : ''}
                         className="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs outline-none" 
                         value={newComment} 
                         onChange={(e) => setNewComment(e.target.value)}
@@ -2956,7 +3038,7 @@
                         disabled={isUploadingToDrive} 
                         className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-3 px-4 rounded-xl shadow-md text-xs active-scale transition-colors"
                       >
-                        Lưu Thay Đổi Dữ Liệu
+                        {editingReportId ? 'Lưu Thay Đổi Dữ Liệu' : 'Phát Hành Thông Báo'}
                       </button>
                       <button 
                         type="button" 
