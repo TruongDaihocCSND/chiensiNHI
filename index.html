@@ -582,6 +582,45 @@
       };
 
       // ----------------------------------------------------------------------
+      // HÀM HELPER TẢI ẢNH AN TOÀN VƯỢT CORS PROXY DÀNH CHO GOOGLE DRIVE
+      // ----------------------------------------------------------------------
+      const fetchImageAsBlob = async (url) => {
+        // 1. Thử tải trực tiếp trước (phù hợp cho Unsplash, Imgur có CORS mở)
+        try {
+          const response = await fetch(url);
+          if (response.ok) {
+            return await response.blob();
+          }
+        } catch (e) {
+          console.warn("Tải trực tiếp thất bại do lỗi CORS, kích hoạt Proxy CORS cho url:", url);
+        }
+
+        // 2. Thử qua CORS Proxy 1: corsproxy.io (Rất nhanh và không giới hạn băng thông)
+        try {
+          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+          const response = await fetch(proxyUrl);
+          if (response.ok) {
+            return await response.blob();
+          }
+        } catch (e) {
+          console.warn("Cổng corsproxy.io gặp sự cố, đang chuyển hướng sang cổng dự phòng...");
+        }
+
+        // 3. Thử qua CORS Proxy 2: api.allorigins.win
+        try {
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+          const response = await fetch(proxyUrl);
+          if (response.ok) {
+            return await response.blob();
+          }
+        } catch (e) {
+          console.error("Mọi nỗ lực vượt CORS qua proxy đều thất bại:", url);
+        }
+
+        throw new Error("Không thể tải ảnh qua bất kỳ giao thức nào.");
+      };
+
+      // ----------------------------------------------------------------------
       // HÀM TẢI TOÀN BỘ ẢNH (DÙNG JSZIP) DÀNH CHO BCH TỔNG
       // ----------------------------------------------------------------------
       const handleDownloadAllImages = async () => {
@@ -592,11 +631,10 @@
           return;
         }
 
-        showToast(`Đang thu thập ${reportsWithImages.length} hình ảnh để đóng gói ZIP... Cần chút thời gian.`);
+        showToast(`Đang thu thập và tải ${reportsWithImages.length} hình ảnh... Vui lòng đợi trong giây lát.`);
         setIsDownloadingAll(true);
 
         try {
-          // Yêu cầu thư viện JSZip được nạp từ tag Script ở <head>
           const zip = new window.JSZip();
           const imgFolder = zip.folder("HinhAnh_ChienSiNhi");
 
@@ -609,42 +647,36 @@
             let imageUrl = parseAndConvertDriveUrl(report.image);
 
             try {
-              // Tiến hành fetch hình ảnh làm dữ liệu Blob
-              const response = await fetch(imageUrl);
-              if (response.ok) {
-                const blob = await response.blob();
-                
-                // Định dạng tên file lưu trữ: YYYYMMDD_TenHocVien_STT.jpg
-                const dateStr = report.date.replace(/-/g, '');
-                let studentName = report.studentId === 'COMMON' ? `Chung_TD${report.squad}` : report.studentId;
-                const safeName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                const filename = `CSN2026_${dateStr}_${safeName}_${i+1}.jpg`;
-                
-                // Đưa ảnh vào thư mục trong JSZip
-                imgFolder.file(filename, blob);
-                successCount++;
-              } else {
-                failCount++;
-              }
+              // Sử dụng cơ chế tải Blob an toàn tích hợp CORS Proxy
+              const blob = await fetchImageAsBlob(imageUrl);
+              
+              // Định dạng tên file lưu trữ: CSN2026_YYYYMMDD_TenHocVien_STT.jpg
+              const dateStr = report.date.replace(/-/g, '');
+              let studentName = report.studentId === 'COMMON' ? `Chung_TD${report.squad}` : report.studentId;
+              const safeName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+              const filename = `CSN2026_${dateStr}_${safeName}_${i+1}.jpg`;
+              
+              imgFolder.file(filename, blob);
+              successCount++;
             } catch (err) {
-              console.warn("Lỗi tải ảnh (có thể do chặn CORS của Google Drive):", imageUrl);
+              console.warn("Thất bại khi tải tệp ảnh:", imageUrl, err);
               failCount++;
             }
           }
 
           // Kiểm tra và xuất file ZIP nếu có ít nhất 1 hình ảnh tải được
           if (successCount > 0) {
-            showToast(`Đang tạo file nén ZIP cho ${successCount} ảnh...`);
+            showToast(`Đang nén và đóng gói ZIP cho ${successCount} ảnh thành công...`);
             const content = await zip.generateAsync({type:"blob"});
             window.saveAs(content, "HinhAnh_ChienSiNhi_2026.zip");
             
             if (failCount > 0) {
-                showToast(`Hoàn tất! ${successCount} ảnh thành công. Bỏ qua ${failCount} ảnh do link bị lỗi quyền riêng tư hoặc CORS chặn.`, 'error');
+                showToast(`Hoàn tất! Tải thành công ${successCount} ảnh. Có ${failCount} ảnh lỗi đường truyền/chặn quyền.`, 'error');
             } else {
                 showToast(`Đã tải xuống thành công toàn bộ ${successCount} ảnh của hệ thống!`);
             }
           } else {
-            showToast('Lỗi bảo mật! Không thể tải tự động ảnh do link ảnh chặn quyền CORS (thường xảy ra với link Drive). Vui lòng lưu thủ công từng ảnh!', 'error');
+            showToast('Lỗi bảo mật! Không có bức ảnh nào vượt qua được tường lửa CORS. Hãy kiểm tra lại kết nối mạng!', 'error');
           }
         } catch (error) {
           showToast('Đã xảy ra sự cố trong hệ thống khi tạo file ZIP!', 'error');
@@ -2218,7 +2250,7 @@
                 )}
 
                 {/* Grid dã chiến quản lý học viên */}
-                <div className="grid lg:grid-cols-12 gap-5 md:gap-6">
+                <div className="grid lg:grid-cols-12 gap-5 md:gap-6 animate-fadeIn">
                   
                   {/* BIỂU MẪU THÊM MỚI CHIẾN SĨ VÀ CHỈ ĐỊNH TIỂU ĐỘI */}
                   <div className="lg:col-span-4">
@@ -2712,7 +2744,7 @@
                     }
 
                     return (
-                      <div className="grid sm:grid-cols-2 gap-4">
+                      <div className="grid sm:grid-cols-2 gap-4 animate-fadeIn">
                         {studentReports.map((report) => {
                           const isCommon = report.studentId === 'COMMON';
                           return (
