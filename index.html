@@ -592,10 +592,23 @@
             return await response.blob();
           }
         } catch (e) {
-          console.warn("Tải trực tiếp thất bại do lỗi CORS, kích hoạt Proxy CORS cho url:", url);
+          console.warn("Tải trực tiếp thất bại do lỗi CORS, kích hoạt CORS Proxy chuyên dụng cho url:", url);
         }
 
-        // 2. Thử qua CORS Proxy 1: corsproxy.io (Rất nhanh và không giới hạn băng thông)
+        // 2. Thử qua CORS Proxy của wsrv.nl - Đây là giải pháp bypass CORS tốt nhất cho tập tin ảnh,
+        // hoạt động bằng cách yêu cầu máy chủ trung gian của wsrv.nl tải ảnh từ Google Drive về,
+        // sau đó trả ngược lại client với tiêu đề CORS mở cho phép truy cập tự do.
+        try {
+          const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(url)}`;
+          const response = await fetch(proxyUrl);
+          if (response.ok) {
+            return await response.blob();
+          }
+        } catch (e) {
+          console.warn("wsrv.nl thất bại, chuyển hướng cổng dự phòng corsproxy.io...");
+        }
+
+        // 3. Thử qua CORS Proxy 2: corsproxy.io (Hỗ trợ tốt các đường dẫn Drive)
         try {
           const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
           const response = await fetch(proxyUrl);
@@ -603,10 +616,10 @@
             return await response.blob();
           }
         } catch (e) {
-          console.warn("Cổng corsproxy.io gặp sự cố, đang chuyển hướng sang cổng dự phòng...");
+          console.warn("Cổng corsproxy.io gặp sự cố, đang chuyển sang cổng api.allorigins.win...");
         }
 
-        // 3. Thử qua CORS Proxy 2: api.allorigins.win
+        // 4. Thử qua CORS Proxy 3: api.allorigins.win
         try {
           const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
           const response = await fetch(proxyUrl);
@@ -668,7 +681,8 @@
           if (successCount > 0) {
             showToast(`Đang nén và đóng gói ZIP cho ${successCount} ảnh thành công...`);
             const content = await zip.generateAsync({type:"blob"});
-            window.saveAs(content, "HinhAnh_ChienSiNhi_2026.zip");
+            const saveAsFn = window.saveAs || (window.FileSaver && window.FileSaver.saveAs) || saveAs;
+            saveAsFn(content, "HinhAnh_ChienSiNhi_2026.zip");
             
             if (failCount > 0) {
                 showToast(`Hoàn tất! Tải thành công ${successCount} ảnh. Có ${failCount} ảnh lỗi đường truyền/chặn quyền.`, 'error');
@@ -1334,7 +1348,7 @@
                             <select
                               value={squadCodeSelect}
                               onChange={(e) => setSquadCodeSelect(e.target.value)}
-                              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:bg-white text-xs font-semibold text-slate-800 transition-all"
+                              className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:bg-white text-xs font-semibold text-slate-800 transition-all"
                             >
                               <option value="BCHTONG">⭐️ BAN CHỈ HUY TỔNG</option>
                               {Array.from({ length: squadCount }, (_, i) => i + 1).map((num) => {
