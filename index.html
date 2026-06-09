@@ -576,16 +576,7 @@
           if (docSnap.exists()) {
             setSquadPasswords(docSnap.data() || {});
           } else {
-            const defaultPasses = {
-              'BCHTONG_PASS': 'tong_bch', // Đặc quyền tạo Mật khẩu cho BCH Tổng
-              'TD01': 'td_doanket',
-              'TD02': 'td_kycuong',
-              'TD03': 'td_dungcam',
-              'TD04': 'td_kiencuong',
-              'TD05': 'td_quyetchien'
-            };
-            fb.setDoc(squadPasswordsRef, defaultPasses);
-            setSquadPasswords(defaultPasses);
+            setSquadPasswords({});
           }
         }, (error) => console.error("Lỗi tải mật khẩu các tiểu đội:", error));
 
@@ -791,7 +782,8 @@
 
         // Kiểm tra quyền đăng nhập của BCH Tổng
         if (squadCode === 'BCHTONG') {
-          const generalPass = squadPasswords['BCHTONG_PASS'] || 'BCHTONG';
+          // Thêm mật khẩu tạm thời 'BCHTONG_2026' nếu hệ thống chưa có mật khẩu nào
+          const generalPass = squadPasswords['BCHTONG_PASS'] || 'BCHTONG_2026';
           if (inputPass === generalPass) {
             setRole('general');
             setLoggedInSquad(null);
@@ -816,7 +808,7 @@
             showToast('Mật khẩu Tiểu Đội không chính xác!', 'error');
           }
         } else {
-          showToast('Mật khẩu cho tiểu đội này chưa được kích hoạt trên Cloud!', 'error');
+          showToast('Mật khẩu cho tiểu đội này chưa được thiết lập trên hệ thống!', 'error');
         }
       };
 
@@ -2253,9 +2245,9 @@
                       <div className="text-[10px] font-extrabold text-yellow-800">⭐️ Mật Khẩu BCH Tổng</div>
                       <input 
                         type="text" 
-                        defaultValue={squadPasswords['BCHTONG_PASS'] || 'BCHTONG'}
+                        defaultValue={squadPasswords['BCHTONG_PASS'] || 'BCHTONG_2026'}
                         onBlur={(e) => handleSaveSquadPasswords('BCHTONG_PASS', e.target.value)}
-                        placeholder="Mật khẩu tổng"
+                        placeholder="Mật khẩu tạm: BCHTONG_2026"
                         className="w-full p-2 bg-white border border-yellow-300 rounded-lg text-xs font-mono font-bold text-center text-yellow-900 focus:ring-2 focus:ring-yellow-500 outline-none"
                       />
                       <div className="text-[7px] text-yellow-600 text-center uppercase tracking-wider font-extrabold">Nhấn ra ngoài để tự lưu</div>
@@ -2264,7 +2256,7 @@
                     {/* MẬT KHẨU CÁC TIỂU ĐỘI */}
                     {Array.from({ length: squadCount }, (_, i) => i + 1).map((num) => {
                       const code = `TD${String(num).padStart(2, '0')}`;
-                      const currentPass = squadPasswords[code] || '123456';
+                      const currentPass = squadPasswords[code] || '';
                       return (
                         <div key={num} className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5 flex flex-col justify-between">
                           <div className="text-[10px] font-bold text-slate-700">Tiểu Đội {num} ({code})</div>
@@ -2272,7 +2264,7 @@
                             type="text" 
                             defaultValue={currentPass}
                             onBlur={(e) => handleSaveSquadPasswords(code, e.target.value)}
-                            placeholder="Mật khẩu"
+                            placeholder="Chưa thiết lập"
                             className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-center focus:ring-2 focus:ring-green-500 outline-none"
                           />
                           <div className="text-[7px] text-slate-400 text-center uppercase tracking-wider font-extrabold">Nhấn ra ngoài để lưu</div>
@@ -2618,7 +2610,7 @@
                                         <button
                                           onClick={() => handleStartEditStudent(student)}
                                           className="bg-amber-50 hover:bg-amber-100 text-amber-700 p-2 rounded-xl transition-colors border border-amber-200 inline-flex items-center justify-center active-scale"
-                                          title="Sửa thông tin học viên"
+                                          title="Sửa thông-tin học viên"
                                         >
                                           ✏️
                                         </button>
