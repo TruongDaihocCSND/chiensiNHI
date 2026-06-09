@@ -577,12 +577,12 @@
             setSquadPasswords(docSnap.data() || {});
           } else {
             const defaultPasses = {
-              'BCHTONG_PASS': 'BCHTONG', // Đặc quyền tạo Mật khẩu cho BCH Tổng
-              'TD01': '123456',
-              'TD02': '123456',
-              'TD03': '123456',
-              'TD04': '123456',
-              'TD05': '123456'
+              'BCHTONG_PASS': 'tong_bch', // Đặc quyền tạo Mật khẩu cho BCH Tổng
+              'TD01': 'td_doanket',
+              'TD02': 'td_kycuong',
+              'TD03': 'td_dungcam',
+              'TD04': 'td_kiencuong',
+              'TD05': 'td_quyetchien'
             };
             fb.setDoc(squadPasswordsRef, defaultPasses);
             setSquadPasswords(defaultPasses);
