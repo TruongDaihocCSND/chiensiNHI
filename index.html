@@ -963,7 +963,9 @@
         setNewStudentPhone(student.parentPhone || '');
         setNewStudentEmail(student.parentEmail || '');
         setNewStudentAvatar(student.avatar || 'nam.png');
-        window.scrollTo({ top: 400, behavior: 'smooth' });
+        
+        // Cải thiện Auto-scroll mượt mà trên Mobile & PC
+        setTimeout(() => document.getElementById('student-form')?.scrollIntoView({ behavior: 'smooth' }), 100);
         showToast(`Đã nạp thông tin để sửa học viên: ${student.name}`);
       };
 
@@ -1139,8 +1141,9 @@
         setNewImage(report.image);
         setCustomImageFile(null);
         
+        // Auto-scroll mượt mà trên Mobile & PC
         if (role !== 'general') {
-            window.scrollTo({ top: 200, behavior: 'smooth' });
+            setTimeout(() => document.getElementById('report-form')?.scrollIntoView({ behavior: 'smooth' }), 100);
         }
         showToast(`Đã nạp dữ liệu sửa chữa cho: ${student ? student.name : ''}`);
       };
@@ -1681,46 +1684,18 @@
                   </div>
                 </div>
 
-                {/* Chọn nhanh học sinh hoặc Nhận xét chung trên mobile */}
-                <div className="block lg:hidden bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                  <label className="block text-[10px] font-extrabold text-slate-600 uppercase mb-1.5">Chọn đối tượng viết nhận xét:</label>
-                  <select
-                    className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800"
-                    value={selectedStudent ? selectedStudent.id : ''}
-                    onChange={(e) => {
-                      if (e.target.value === 'COMMON') {
-                        setSelectedStudent({ id: 'COMMON', name: 'Nhận xét Chung Toàn Tiểu Đội', squad: loggedInSquad });
-                      } else {
-                        const student = students.find(s => s.id === e.target.value);
-                        setSelectedStudent(student || null);
-                      }
-                      setNewActivity('');
-                      setNewComment('');
-                      setEditingReportId(null);
-                    }}
-                  >
-                    <option value="">-- Bấm để chọn chiến sĩ / Hoạt động chung --</option>
-                    <option value="COMMON" className="font-extrabold text-amber-600">⭐️ NHẬN XẾT CHUNG CHO TOÀN TIỂU ĐỘI ⭐️</option>
-                    {students.filter(s => s.squad === loggedInSquad).map(student => (
-                      <option key={student.id} value={student.id}>
-                        {student.name} ({student.id})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
                 {/* Phân chia khu vực nhập liệu */}
-                <div className="grid lg:grid-cols-12 gap-5 md:gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6">
                   
-                  {/* Danh sách chiến sĩ thuộc tiểu đội quản lý - TRÊN PC */}
-                  <div className="hidden lg:block lg:col-span-5 space-y-4">
-                    <div className="bg-white rounded-2xl shadow p-5 space-y-4">
+                  {/* Danh sách chiến sĩ thuộc tiểu đội quản lý - HIỂN THỊ CẢ PC & MOBILE (Thay thế hoàn toàn nút select ẩn chức năng cũ) */}
+                  <div className="lg:col-span-5 space-y-4 order-1">
+                    <div className="bg-white rounded-2xl shadow p-4 md:p-5 space-y-4">
                       <h3 className="text-xs font-black text-slate-700 tracking-wider uppercase flex justify-between items-center">
                         <span>Danh sách đối tượng</span>
-                        <span className="text-[10px] text-slate-400 normal-case font-normal">(Chọn để viết hoặc đăng ảnh)</span>
+                        <span className="text-[10px] text-slate-400 normal-case font-normal hidden sm:inline">(Chọn để viết hoặc đăng ảnh)</span>
                       </h3>
                       
-                      <div className="divide-y divide-slate-100 max-h-[450px] overflow-y-auto pr-1">
+                      <div className="divide-y divide-slate-100 max-h-[300px] lg:max-h-[450px] overflow-y-auto pr-1">
                         
                         {/* NÚT CHỌN ĐĂNG TIN / NHẬN XẾT CHUNG CHO CẢ TIỂU ĐỘI */}
                         <button
@@ -1730,6 +1705,9 @@
                             setNewActivity('');
                             setNewComment('');
                             setEditingReportId(null);
+                            if (window.innerWidth < 1024) {
+                                setTimeout(() => document.getElementById('report-form')?.scrollIntoView({ behavior: 'smooth' }), 100);
+                            }
                           }}
                           className={`w-full text-left p-3.5 my-1 rounded-xl transition-all duration-200 flex items-center justify-between border active-scale ${
                             selectedStudent?.id === 'COMMON'
@@ -1765,6 +1743,9 @@
                                 setNewActivity('');
                                 setNewComment('');
                                 setEditingReportId(null);
+                                if (window.innerWidth < 1024) {
+                                    setTimeout(() => document.getElementById('report-form')?.scrollIntoView({ behavior: 'smooth' }), 100);
+                                }
                               }}
                               className={`w-full text-left p-3 my-1 rounded-xl transition-all duration-200 flex items-center justify-between border active-scale ${
                                 isSelected 
@@ -1801,9 +1782,9 @@
                   </div>
 
                   {/* BIỂU MẪU VIẾT NHẬN XẾT HOẠT ĐỘNG MỚI */}
-                  <div className="lg:col-span-7">
+                  <div className="lg:col-span-7 order-2">
                     {selectedStudent ? (
-                      <form onSubmit={handleAddNewReport} className="bg-white rounded-2xl shadow p-5 md:p-6 border border-slate-100 space-y-4 animate-fadeIn">
+                      <form id="report-form" onSubmit={handleAddNewReport} className="bg-white rounded-2xl shadow p-5 md:p-6 border border-slate-100 space-y-4 animate-fadeIn">
                         
                         <div className="flex justify-between items-center pb-3 border-b border-slate-100">
                           <div>
@@ -1999,7 +1980,7 @@
                         <div>
                           <h3 className="font-bold text-slate-700 text-xs md:text-sm">Chưa lựa chọn đối tượng nhận xét</h3>
                           <p className="text-[11px] text-slate-400 max-w-xs mt-1 leading-relaxed">
-                            Hãy chọn tên học sinh bất kỳ hoặc bấm nút <strong>"Nhận Xét Chung Tiểu Đội"</strong> ở danh sách bên trái để tiến hành đăng tin.
+                            Hãy chọn tên học sinh bất kỳ hoặc bấm nút <strong>"Nhận Xét Chung Tiểu Đội"</strong> ở danh sách phía trên để tiến hành đăng tin.
                           </p>
                         </div>
                       </div>
@@ -2315,7 +2296,7 @@
                   
                   {/* BIỂU MẪU THÊM MỚI CHIẾN SĨ VÀ CHỈ ĐỊNH TIỂU ĐỘI */}
                   <div className="lg:col-span-4">
-                    <form onSubmit={handleAddStudentByGeneral} className="bg-white rounded-2xl shadow p-4 md:p-5 border border-slate-100 space-y-3.5">
+                    <form id="student-form" onSubmit={handleAddStudentByGeneral} className="bg-white rounded-2xl shadow p-4 md:p-5 border border-slate-100 space-y-3.5">
                       <div className="border-b border-slate-100 pb-2">
                         <span className="text-[9px] text-green-700 font-black uppercase tracking-wider block">
                           {editingStudentId ? 'CẬP NHẬT THÔNG TIN HỌC VIÊN' : 'THÊM MỚI CHIẾN SĨ'}
