@@ -391,6 +391,11 @@
       const [db, setDb] = useState(null);
       const [appId, setAppId] = useState('chiensinhi');
 
+      // State Quản lý Đa Khóa Học (Unlimited Courses)
+      const [courses, setCourses] = useState([]);
+      const [activeCourse, setActiveCourse] = useState(null);
+      const [newCourseName, setNewCourseName] = useState('');
+
       // State lưu trữ dữ liệu đồng bộ đám mây
       const [students, setStudents] = useState([]);
       const [reports, setReports] = useState([]);
@@ -412,7 +417,7 @@
 
       // Trạng thái điều hướng giao diện chính
       const [role, setRole] = useState(null); 
-      const [currentView, setCurrentView] = useState('landing'); 
+      const [currentView, setCurrentView] = useState('select_course'); // Đã thay đổi khởi đầu
       const [loginTab, setLoginTab] = useState('parent'); // Switch Tab cho Mobile
       const [toast, setToast] = useState(null);
 
@@ -438,7 +443,7 @@
       const [loggedInSquad, setLoggedInSquad] = useState(null);
 
       // Biểu mẫu viết nhận xét, đánh giá rèn luyện
-      const [selectedStudent, setSelectedStudent] = useState(null); // Có thể là student object, { id: 'COMMON' } hoặc { id: 'GLOBAL_COMMON' }
+      const [selectedStudent, setSelectedStudent] = useState(null); 
       const [newReportDate, setNewReportDate] = useState(new Date().toISOString().split('T')[0]);
       const [newActivity, setNewActivity] = useState('');
       const [newBehaviorRating, setNewBehaviorRating] = useState('Tốt');
@@ -448,7 +453,7 @@
       const [customImageFile, setCustomImageFile] = useState(null);
 
       // Biểu mẫu BCH Tổng thêm/Cập nhật thông tin học viên
-      const [editingStudentId, setEditingStudentId] = useState(null); // Quản lý ID học viên đang sửa đổi
+      const [editingStudentId, setEditingStudentId] = useState(null);
       const [newStudentName, setNewStudentName] = useState('');
       const [newStudentPhoneState, setNewStudentPhone] = useState('');
       const [newStudentEmail, setNewStudentEmail] = useState('');
@@ -524,28 +529,62 @@
       }, []);
 
       // ----------------------------------------------------------------------
-      // ĐỒNG BỘ DỮ LIỆU ĐÁM MÂY REAL-TIME (FIRESTORE)
+      // ĐỒNG BỘ DANH SÁCH KHÓA HỌC
       // ----------------------------------------------------------------------
       useEffect(() => {
         if (!user || !db || !fb) return;
 
+        const coursesRef = fb.collection(db, `artifacts/${appId}/public/data`, 'courses');
+        const unSubCourses = fb.onSnapshot(coursesRef, async (snap) => {
+          if (snap.empty) {
+            // Tự động tạo khóa học mặc định ban đầu nếu hệ thống hoàn toàn trống
+            const defaultCourseId = 'course_1';
+            const defaultCourse = { name: "Khóa 1 (Trải Nghiệm Hè)", createdAt: Date.now() };
+            await fb.setDoc(fb.doc(db, `artifacts/${appId}/public/data`, 'courses', defaultCourseId), defaultCourse);
+          } else {
+            const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setCourses(data.sort((a, b) => a.createdAt - b.createdAt));
+          }
+          setIsInitializingData(false);
+        }, (error) => console.error("Lỗi khi đồng bộ Khóa Học:", error));
+
+        return () => unSubCourses();
+      }, [user, db, appId]);
+
+
+      // ----------------------------------------------------------------------
+      // ĐỒNG BỘ DỮ LIỆU ĐÁM MÂY REAL-TIME (DỰA TRÊN KHÓA HỌC ĐƯỢC CHỌN)
+      // ----------------------------------------------------------------------
+      useEffect(() => {
+        if (!user || !db || !fb || !activeCourse) return;
+
         const basePath = `artifacts/${appId}/public/data`;
-        const studentsRef = fb.collection(db, basePath, 'students');
-        const reportsRef = fb.collection(db, basePath, 'reports');
-        const configRef = fb.doc(db, basePath, 'config', 'googleDrive');
-        const squadPasswordsRef = fb.doc(db, basePath, 'config', 'squadPasswords');
+        
+        // Dynamic collection names based on course ID
+        const studentsRef = fb.collection(db, basePath, `students_${activeCourse.id}`);
+        const reportsRef = fb.collection(db, basePath, `reports_${activeCourse.id}`);
+        const configRef = fb.doc(db, basePath, `config_${activeCourse.id}`, 'googleDrive');
+        const squadPasswordsRef = fb.doc(db, basePath, `config_${activeCourse.id}`, 'squadPasswords');
+
+        // Reset local data when course changes before new data arrives
+        setStudents([]);
+        setReports([]);
+        setSquadPasswords({});
+        setDriveScriptUrl('');
+        setInputScriptUrl('');
 
         const unSubStudents = fb.onSnapshot(studentsRef, (snap) => {
-          if (snap.empty) {
+          if (snap.empty && activeCourse.id === 'course_1') {
+            // Chỉ sinh dữ liệu mẫu cho khóa học đầu tiên để minh họa
             DEFAULT_STUDENTS.forEach(async (s) => {
-              await fb.setDoc(fb.doc(db, basePath, 'students', s.id), s);
+              await fb.setDoc(fb.doc(db, basePath, `students_${activeCourse.id}`, s.id), s);
             });
-          } else {
+          } else if (!snap.empty) {
             const data = snap.docs.map(doc => {
               const item = doc.data();
               if (!item.parentPassword) {
                 item.parentPassword = createParentPasswordByLogic(item.parentPhone, item.id);
-                fb.setDoc(fb.doc(db, basePath, 'students', item.id), item, { merge: true });
+                fb.setDoc(fb.doc(db, basePath, `students_${activeCourse.id}`, item.id), item, { merge: true });
               }
               return item;
             });
@@ -554,11 +593,12 @@
         }, (error) => console.error("Lỗi khi đồng bộ học viên từ Cloud:", error));
 
         const unSubReports = fb.onSnapshot(reportsRef, (snap) => {
-          if (snap.empty) {
+          if (snap.empty && activeCourse.id === 'course_1') {
+             // Chỉ sinh dữ liệu mẫu cho khóa học đầu tiên
             DEFAULT_REPORTS.forEach(async (r) => {
-              await fb.setDoc(fb.doc(db, basePath, 'reports', r.id), r);
+              await fb.setDoc(fb.doc(db, basePath, `reports_${activeCourse.id}`, r.id), r);
             });
-          } else {
+          } else if (!snap.empty) {
             const data = snap.docs.map(doc => ({ ...doc.data() }));
             setReports(data.sort((a, b) => b.date.localeCompare(a.date)));
           }
@@ -580,15 +620,13 @@
           }
         }, (error) => console.error("Lỗi tải mật khẩu các tiểu đội:", error));
 
-        setIsInitializingData(false);
-
         return () => {
           unSubStudents();
           unSubReports();
           unSubConfig();
           unSubSquadPasswords();
         };
-      }, [user, db, appId]);
+      }, [user, db, appId, activeCourse]);
 
       const getSquadCodes = () => {
         const codes = {};
@@ -614,6 +652,46 @@
         } else {
           showToast('Mã bảo mật không chính xác!', 'error');
         }
+      };
+
+      // TẠO KHÓA HỌC MỚI
+      const handleCreateCourse = async (e) => {
+          e.preventDefault();
+          if (!newCourseName.trim()) {
+              showToast('Vui lòng nhập tên khóa huấn luyện!', 'error'); return;
+          }
+          try {
+              const newId = `course_${Date.now()}`;
+              await fb.setDoc(fb.doc(db, `artifacts/${appId}/public/data`, 'courses', newId), {
+                  name: newCourseName.trim(),
+                  createdAt: Date.now()
+              });
+              showToast('Đã tạo khóa huấn luyện mới thành công!');
+              setNewCourseName('');
+          } catch (err) {
+              showToast('Lỗi khi tạo khóa học đám mây!', 'error');
+          }
+      };
+
+      // ĐỔI KHÓA HỌC (QUAY VỀ MÀN HÌNH CHỌN)
+      const handleSwitchCourse = () => {
+          setActiveCourse(null);
+          setRole(null);
+          setCurrentView('select_course');
+          setParentInput('');
+          setParentPasswordInput('');
+          setSquadPasswordInput('');
+          setLoggedInParentStudents([]);
+          setSelectedChild(null);
+          setLoggedInSquad(null);
+          setSelectedStudent(null);
+          setEditingReportId(null);
+          setNewActivity('');
+          setNewComment('');
+          setViewingStudent(null);
+          setIsSettingsUnlocked(false);
+          setMasterPassInput('');
+          handleCancelEditStudent();
       };
 
       // ----------------------------------------------------------------------
@@ -670,7 +748,7 @@
 
         try {
           const zip = new window.JSZip();
-          const imgFolder = zip.folder("HinhAnh_ChienSiNhi");
+          const imgFolder = zip.folder(`HinhAnh_${activeCourse.name.replace(/[^a-z0-9]/gi, '_')}`);
 
           let successCount = 0;
           let failCount = 0;
@@ -698,7 +776,7 @@
             showToast(`Đang nén và đóng gói ZIP cho ${successCount} ảnh thành công...`);
             const content = await zip.generateAsync({type:"blob"});
             const saveAsFn = window.saveAs || (window.FileSaver && window.FileSaver.saveAs) || saveAs;
-            saveAsFn(content, "HinhAnh_ChienSiNhi_2026.zip");
+            saveAsFn(content, `HinhAnh_${activeCourse.name.replace(/[^a-z0-9]/gi, '_')}.zip`);
             
             if (failCount > 0) {
                 showToast(`Hoàn tất! Tải thành công ${successCount} ảnh. Có ${failCount} ảnh lỗi đường truyền/chặn quyền.`, 'error');
@@ -814,11 +892,11 @@
 
       const handleSaveDriveConfig = async (e) => {
         e.preventDefault();
-        if (!db || !fb) return;
+        if (!db || !fb || !activeCourse) return;
 
         try {
           const basePath = `artifacts/${appId}/public/data`;
-          const configRef = fb.doc(db, basePath, 'config', 'googleDrive');
+          const configRef = fb.doc(db, basePath, `config_${activeCourse.id}`, 'googleDrive');
           await fb.setDoc(configRef, {
             scriptUrl: inputScriptUrl.trim()
           }, { merge: true });
@@ -831,10 +909,10 @@
       };
 
       const handleSaveSquadPasswords = async (code, password) => {
-        if (!db || !fb) return;
+        if (!db || !fb || !activeCourse) return;
         try {
           const basePath = `artifacts/${appId}/public/data`;
-          const ref = fb.doc(db, basePath, 'config', 'squadPasswords');
+          const ref = fb.doc(db, basePath, `config_${activeCourse.id}`, 'squadPasswords');
           await fb.setDoc(ref, {
             [code]: password.trim()
           }, { merge: true });
@@ -846,7 +924,7 @@
 
       const handleAddNewReport = async (e) => {
         e.preventDefault();
-        if (!selectedStudent) {
+        if (!selectedStudent || !activeCourse) {
           showToast('Vui lòng chọn đối tượng để gửi nhận xét!', 'error');
           return;
         }
@@ -884,7 +962,7 @@
 
         try {
           if (editingReportId) {
-            const reportRef = fb.doc(db, basePath, 'reports', editingReportId);
+            const reportRef = fb.doc(db, basePath, `reports_${activeCourse.id}`, editingReportId);
             await fb.setDoc(reportRef, {
               date: newReportDate,
               activity: newActivity,
@@ -906,7 +984,7 @@
             
           } else {
             const newId = `r-${Date.now()}`;
-            const reportRef = fb.doc(db, basePath, 'reports', newId);
+            const reportRef = fb.doc(db, basePath, `reports_${activeCourse.id}`, newId);
             await fb.setDoc(reportRef, {
               id: newId,
               studentId: selectedStudent.id, // Lưu trữ: 'COMMON', 'GLOBAL_COMMON' hoặc 'CSxxx'
@@ -938,11 +1016,11 @@
       // BCH TỔNG THAO TÁC CẬP NHẬT TRỰC TIẾP SQUAD (DƯỚI DANH SÁCH BẢNG)
       // ----------------------------------------------------------------------
       const handleUpdateStudentSquad = async (studentId, newSquadValue) => {
-        if (!db || !fb) return;
+        if (!db || !fb || !activeCourse) return;
         const newSquadNum = parseInt(newSquadValue);
         try {
           const basePath = `artifacts/${appId}/public/data`;
-          const studentRef = fb.doc(db, basePath, 'students', studentId);
+          const studentRef = fb.doc(db, basePath, `students_${activeCourse.id}`, studentId);
           await fb.setDoc(studentRef, {
             squad: newSquadNum
           }, { merge: true });
@@ -982,7 +1060,7 @@
 
       const handleAddStudentByGeneral = async (e) => {
         e.preventDefault();
-        if (!newStudentName.trim()) {
+        if (!newStudentName.trim() || !activeCourse) {
           showToast('Vui lòng điền Họ và tên chiến sĩ nhí!', 'error');
           return;
         }
@@ -1001,7 +1079,7 @@
         if (editingStudentId) {
           // THAO TÁC CẬP NHẬT THÔNG TIN HỌC VIÊN ĐÃ CÓ
           try {
-            const studentRef = fb.doc(db, basePath, 'students', editingStudentId);
+            const studentRef = fb.doc(db, basePath, `students_${activeCourse.id}`, editingStudentId);
             
             // Tìm kiếm tài khoản anh/chị/em khác loại trừ chính học sinh này để đồng nhất password dùng chung
             const existingSibling = students.find(s => s.id !== editingStudentId && (
@@ -1055,7 +1133,7 @@
           };
 
           try {
-            const studentRef = fb.doc(db, basePath, 'students', newId);
+            const studentRef = fb.doc(db, basePath, `students_${activeCourse.id}`, newId);
             await fb.setDoc(studentRef, newStudentObj);
 
             if (existingSibling) {
@@ -1086,13 +1164,14 @@
       };
 
       const executeDeleteStudent = async (id) => {
+        if (!activeCourse) return;
         try {
           const basePath = `artifacts/${appId}/public/data`;
-          await fb.deleteDoc(fb.doc(db, basePath, 'students', id));
+          await fb.deleteDoc(fb.doc(db, basePath, `students_${activeCourse.id}`, id));
           
           const relatedReports = reports.filter(r => r.studentId === id);
           relatedReports.forEach(async (r) => {
-            await fb.deleteDoc(fb.doc(db, basePath, 'reports', r.id));
+            await fb.deleteDoc(fb.doc(db, basePath, `reports_${activeCourse.id}`, r.id));
           });
 
           showToast('Đã xóa vĩnh viễn học viên và nhật ký liên quan.');
@@ -1105,9 +1184,10 @@
       };
 
       const executeDeleteReport = async (id) => {
+        if (!activeCourse) return;
         try {
           const basePath = `artifacts/${appId}/public/data`;
-          await fb.deleteDoc(fb.doc(db, basePath, 'reports', id));
+          await fb.deleteDoc(fb.doc(db, basePath, `reports_${activeCourse.id}`, id));
 
           if (editingReportId === id) {
             setEditingReportId(null);
@@ -1200,16 +1280,24 @@
                 <Shield />
                 <div>
                   <h1 className="font-extrabold text-xs md:text-base tracking-wider uppercase leading-tight">
-                    Sổ Liên Lạc Chương Trình Trải Nghiệm "Chiến Sĩ Công An Nhí"
+                    Sổ Liên Lạc Điện Tử "Chiến Sĩ Công An Nhí"
                   </h1>
                   <span className="text-[8px] md:text-[10px] font-semibold tracking-widest text-custom-accent block uppercase mt-0.5">
-                    Trường Đại Học Cảnh sát nhân dân
+                    {activeCourse ? activeCourse.name : 'Trường Đại Học Cảnh sát nhân dân'}
                   </span>
                 </div>
               </div>
 
               {/* Tác vụ tài khoản */}
               <div className="flex items-center gap-2">
+                {activeCourse && (
+                   <button 
+                      onClick={handleSwitchCourse}
+                      className="bg-yellow-500/20 hover:bg-yellow-500/40 text-yellow-300 border border-yellow-500/50 px-2.5 py-1.5 rounded-lg text-[10px] md:text-xs font-bold transition-colors shadow-sm active-scale mr-1"
+                    >
+                      🔄 Đổi Khóa
+                   </button>
+                )}
                 {role && (
                   <div className="flex items-center gap-2 bg-black/40 px-2.5 py-1.5 md:px-3 md:py-2 rounded-xl border border-green-800 text-[10px] md:text-xs shadow-sm">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse hidden sm:inline-block"></span>
@@ -1225,9 +1313,9 @@
                     </button>
                   </div>
                 )}
-                {!role && (
-                  <span className="text-[8px] md:text-[10px] font-black uppercase tracking-wider bg-black/25 text-emerald-300 px-2.5 py-1.5 rounded-lg border border-green-800">
-                    Học Kỹ Năng Sống • Kỹ Năng Tự Lập • Kỹ Năng An Toàn
+                {!role && !activeCourse && (
+                  <span className="text-[8px] md:text-[10px] font-black uppercase tracking-wider bg-black/25 text-emerald-300 px-2.5 py-1.5 rounded-lg border border-green-800 hidden sm:block">
+                    Học Kỹ Năng Sống • Rèn Bản Lĩnh
                   </span>
                 )}
               </div>
@@ -1237,9 +1325,43 @@
 
           <main className="max-w-7xl mx-auto px-2 sm:px-4 py-4 md:py-8 flex-1 w-full">
             
+            {/* ===================== 0. TRANG CHỌN KHÓA HỌC (MULTI-COURSE) ===================== */}
+            {currentView === 'select_course' && (
+               <div className="space-y-6 md:space-y-8 animate-fadeIn max-w-4xl mx-auto">
+                 <div className="text-center space-y-2">
+                    <h2 className="text-2xl md:text-3xl font-black text-custom-primary-dark">LỰA CHỌN KHÓA HUẤN LUYỆN</h2>
+                    <p className="text-slate-500 text-xs md:text-sm font-medium">Hệ thống lưu trữ độc lập theo từng khóa. Vui lòng chọn đúng khóa học của con em bạn.</p>
+                 </div>
+
+                 <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-5">
+                    {courses.map(course => (
+                       <button
+                          key={course.id}
+                          onClick={() => {
+                             setActiveCourse(course);
+                             setCurrentView('landing');
+                          }}
+                          className="bg-white rounded-2xl p-5 border-2 border-slate-200 hover:border-custom-primary shadow-sm hover:shadow-lg transition-all duration-300 text-left group active-scale flex flex-col justify-between min-h-[140px]"
+                       >
+                          <div>
+                            <div className="w-12 h-12 bg-emerald-50 text-custom-primary rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform border border-emerald-100">
+                               <Shield />
+                            </div>
+                            <h3 className="font-extrabold text-slate-800 text-base group-hover:text-custom-primary">{course.name}</h3>
+                          </div>
+                          <div className="flex items-center justify-between mt-4 border-t border-slate-100 pt-3">
+                             <span className="text-[10px] text-slate-400 font-medium">Nhấn để truy cập</span>
+                             <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-custom-primary group-hover:translate-x-1 transition-transform" />
+                          </div>
+                       </button>
+                    ))}
+                 </div>
+               </div>
+            )}
+
             {/* ===================== 1. TRANG CHỦ ĐĂNG NHẬP RESPONSIVE CAO CẤP ===================== */}
             {}
-            {currentView === 'landing' && (
+            {currentView === 'landing' && activeCourse && (
               <div className="space-y-6 md:space-y-8 animate-fadeIn">
                 
                 {/* Banner oai nghiêm */}
@@ -1249,13 +1371,14 @@
                   
                   <div className="relative z-10 max-w-2xl space-y-3.5">
                     <span className="inline-flex bg-custom-accent text-green-950 font-black text-[9px] tracking-widest px-2.5 py-1.5 rounded-full uppercase shadow-md items-center gap-1">
-                      <span className="w-1.5 h-1.5 bg-green-950 rounded-full animate-ping"></span> Chương Trình Trải Nghiệm "Chiến Sĩ Công An Nhí" Năm 2026
+                      <span className="w-1.5 h-1.5 bg-green-950 rounded-full animate-ping"></span> 
+                      Sổ Liên Lạc: {activeCourse.name}
                     </span>
                     <h2 className="text-2xl md:text-4xl font-extrabold tracking-tight leading-tight text-custom-accent">
                       Rèn Đức Luyện Tài - Sẵn Sàng Học Tập!
                     </h2>
                     <p className="text-xs md:text-sm text-emerald-100/90 leading-relaxed font-medium">
-                      Chào mừng quý phụ huynh và các đồng chí. Đây là hệ thống sổ liên lạc điện tử của chương trình trải nghiệm "Chiến sĩ Công an nhí" năm 2026 tại Trường Đại học Cảnh sát nhân dân.
+                      Chào mừng quý phụ huynh và các đồng chí. Đây là hệ thống sổ liên lạc điện tử của chương trình trải nghiệm "Chiến sĩ Công an nhí" tại Trường Đại học Cảnh sát nhân dân.
                     </p>
                   </div>
                 </div>
@@ -1662,7 +1785,7 @@
 
             {/* ===================== 3. GIAO DIỆN CHỈ HUY TIỂU ĐỘI CAO CẤP ===================== */}
             {}
-            {currentView === 'commander_dashboard' && loggedInSquad && (
+            {currentView === 'commander_dashboard' && loggedInSquad && activeCourse && (
               <div className="space-y-5 md:space-y-6 animate-fadeIn">
                 
                 {/* Header dã chiến */}
@@ -2101,7 +2224,7 @@
 
             {/* ===================== 4. GIAO DIỆN CHỈ HUY TỔNG RESPONSIVE ===================== */}
             {}
-            {currentView === 'general_dashboard' && (
+            {currentView === 'general_dashboard' && activeCourse && (
               <div className="space-y-5 md:space-y-6 animate-fadeIn">
                 
                 {/* Header Tổng quan */}
@@ -2111,7 +2234,7 @@
                       Cơ Quan Chỉ Huy Tối Cao (BCH Tổng)
                     </span>
                     <h2 className="text-xl md:text-2xl font-black mt-1 text-custom-accent">
-                      Bảng Điều Hành Toàn Khóa Huấn Luyện
+                      Bảng Điều Hành: {activeCourse.name}
                     </h2>
                     <p className="text-xs text-emerald-200 mt-1 font-medium leading-relaxed">
                       Quản lý danh sách học viên, thêm mới, chỉ định biên chế Tiểu đội và đồng bộ giám sát toàn khoá học.
@@ -2288,6 +2411,30 @@
                     </div>
                   </div>
                 </div>
+
+                {/* KHU VỰC TẠO KHÓA HỌC MỚI */}
+                <div className="bg-white rounded-2xl p-4 md:p-5 shadow border border-slate-100 space-y-4 animate-fadeIn mt-4">
+                  <div className="flex items-center gap-2 border-b pb-2">
+                    <span className="text-xl">🆕</span>
+                    <div>
+                      <h3 className="text-xs md:text-sm font-black text-slate-800">Khởi Tạo Khóa Huấn Luyện Mới</h3>
+                      <p className="text-[10px] text-slate-400">Tạo không gian lưu trữ dữ liệu độc lập cho một khóa học mới.</p>
+                    </div>
+                  </div>
+                  <form onSubmit={handleCreateCourse} className="flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="text"
+                      required
+                      placeholder="Tên Khóa Mới (VD: Khóa 2 - Trải Nghiệm Hè 2026)"
+                      value={newCourseName}
+                      onChange={e => setNewCourseName(e.target.value)}
+                      className="flex-1 p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-green-500 outline-none bg-slate-50"
+                    />
+                    <button type="submit" className="bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 px-6 rounded-xl text-xs transition-colors active-scale whitespace-nowrap">
+                      Tạo Khóa Mới
+                    </button>
+                  </form>
+                </div>
                   </>
                 )}
 
@@ -2408,12 +2555,12 @@
                     </form>
                   </div>
 
-                  {/* DANH SÁCH HỌC VIÊN TOÀN KHÓA HỌC */}
+                  {/* DANH SÁCH HỌC VIÊN CỦA KHÓA HỌC */}
                   {}
                   <div className="lg:col-span-8">
                     <div className="bg-white rounded-2xl shadow p-4 md:p-5 border border-slate-100 space-y-4">
                       <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                        <h3 className="text-xs font-black text-slate-700 tracking-wider uppercase">Danh Sách Học Viên Toàn Khóa</h3>
+                        <h3 className="text-xs font-black text-slate-700 tracking-wider uppercase">Danh Sách Học Viên Khóa Này</h3>
                         <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">Phân chia tiểu đội nhanh tại bảng</span>
                       </div>
 
@@ -2622,7 +2769,7 @@
                   <div className="border-b border-slate-100 pb-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <h3 className="text-xs md:text-sm font-black text-slate-700 tracking-wider uppercase flex items-center gap-1.5">
                       <img src="Logo.png" alt="Icon" className="w-5 h-5 object-cover rounded-full" />
-                      <span>Giám Sát Báo Cáo Của Toàn Bộ Các Tiểu Đội (Giám Sát Tổng)</span>
+                      <span>Giám Sát Báo Cáo Khóa Học Này</span>
                     </h3>
                     
                     {/* BỘ NÚT CHỨC NĂNG CỦA GIÁM SÁT TỔNG */}
@@ -2653,14 +2800,14 @@
                             ) : (
                                <DownloadIcon className="w-4 h-4" />
                             )}
-                            <span>{isDownloadingAll ? 'Đang nén ZIP...' : 'Tải ảnh'}</span>
+                            <span>{isDownloadingAll ? 'Đang nén ZIP...' : 'Tải ảnh khóa này'}</span>
                         </button>
                     </div>
                   </div>
                   
                   {reports.length === 0 ? (
                     <div className="p-8 text-center text-slate-400 font-semibold italic text-xs">
-                      Hệ thống trống! Chưa ghi nhận nhận xét nào ngày hôm nay.
+                      Hệ thống trống! Chưa ghi nhận nhận xét nào cho khóa này.
                     </div>
                   ) : (
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -2761,7 +2908,7 @@
 
           {/* ===================== MODAL XEM CHI TIẾT HỌC VIÊN CỦA BCH TỔNG ===================== */}
           {}
-          {viewingStudent && (
+          {viewingStudent && activeCourse && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 animate-fadeIn">
               <div className="absolute inset-0" onClick={() => setViewingStudent(null)}></div>
               
@@ -2869,7 +3016,7 @@
           )}
 
           {/* ===================== MODAL CHỈNH SỬA & TẠO THÔNG BÁO CHO BCH TỔNG ===================== */}
-          {role === 'general' && selectedStudent && (editingReportId || selectedStudent.id === 'GLOBAL_COMMON') && (
+          {role === 'general' && selectedStudent && activeCourse && (editingReportId || selectedStudent.id === 'GLOBAL_COMMON') && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 animate-fadeIn">
               <div className="absolute inset-0" onClick={() => {
                 setEditingReportId(null);
