@@ -143,9 +143,42 @@
 
   <div id="root" class="responsive-scale"></div>
 
-  <!-- Sử dụng preset classic-react tùy chỉnh đã được đăng ký ở trên -->
-  <script type="text/babel" data-presets="classic-react">
+  <!-- Sử dụng Babel Standalone với chế độ ES Module để nạp Firebase từ CDN chính thống -->
+  <script type="text/babel" data-presets="classic-react" data-type="module">
     const { useState, useEffect, useMemo, useCallback } = React;
+
+    // ============================================================================
+    // CẤU HÌNH KẾT NỐI VÀ KHỞI TẠO FIREBASE SDK
+    // ============================================================================
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Cấu hình Firebase tự động từ môi trường hoặc thông số do bạn tự dán tại đây
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+       apiKey: "AIzaSyBqw-x93QgIIGe_AmKpO_BgUL1vJ9RaGrI",
+  authDomain: "chiensinhi.firebaseapp.com",
+  projectId: "chiensinhi",
+  storageBucket: "chiensinhi.firebasestorage.app",
+  messagingSenderId: "57593901975",
+  appId: "1:57593901975:web:df9c359a7b062028634ad2"
+    };
+
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'cs_cong_an_default';
+
+    // Khởi tạo các dịch vụ Firebase nếu config có thông tin tối thiểu
+    const isFirebaseConfigured = !!(firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey.trim() !== "");
+    
+    let app, auth, db;
+    if (isFirebaseConfigured) {
+      try {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+      } catch (e) {
+        console.error("Lỗi khởi tạo SDK Firebase: ", e);
+      }
+    }
 
     // Helper Component render ảnh đại diện có tích hợp Vector SVG chất lượng cao khi lỗi đường dẫn ảnh
     const RenderAvatar = React.memo(({ avatar, className = "w-10 h-10 object-cover" }) => {
@@ -283,9 +316,6 @@
       </svg>
     );
 
-    // ============================================================================
-    // CẤU HÌNH BAN ĐẦU VÀ DỮ LIỆU MẪU ĐỐI SÁNH
-    // ============================================================================
     const APP_CONFIG = {
       defaultImages: {
         squad1: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=600', 
@@ -303,112 +333,22 @@
       return `PH${lastFour}${numId}`;
     };
 
-    const DEFAULT_COURSES = [
-      { id: 'course_1', name: "Khóa 1 (Trải Nghiệm Hè)", createdAt: 1718668800000 }
-    ];
-
-    const DEFAULT_STUDENTS = [
-      { id: 'CS001', name: 'Nguyễn Minh Quân', squad: 1, avatar: 'nam.png', parentPhone: '0987654321', parentEmail: 'phuhuynh@gmail.com', parentPassword: 'PH4321001' },
-      { id: 'CS002', name: 'Nguyễn Minh Thư', squad: 1, avatar: 'nu.png', parentPhone: '0987654321', parentEmail: 'phuhuynh@gmail.com', parentPassword: 'PH4321002' },
-      { id: 'CS003', name: 'Trần Hoàng Bách', squad: 2, avatar: 'nam.png', parentPhone: '0912345678', parentEmail: 'bach@gmail.com', parentPassword: 'PH5678003' },
-      { id: 'CS004', name: 'Phạm Gia Bảo', squad: 3, avatar: 'nam.png', parentPhone: '0909090909', parentEmail: 'bao@gmail.com', parentPassword: 'PH0909004' },
-      { id: 'CS005', name: 'Lê Mai Chi', squad: 4, avatar: 'nu.png', parentPhone: '0933333333', parentEmail: 'chi@gmail.com', parentPassword: 'PH3333005' },
-      { id: 'CS006', name: 'Đỗ Hùng Anh', squad: 5, avatar: 'nam.png', parentPhone: '0944444444', parentEmail: 'anh@gmail.com', parentPassword: 'PH4444006' },
-      { id: 'CS007', name: 'Nguyễn Hoàng Nam', squad: 2, avatar: 'nam.png', parentPhone: '0987654321', parentEmail: 'phuhuynh@gmail.com', parentPassword: 'PH4321007' },
-    ];
-
-    const DEFAULT_REPORTS = [
-      {
-        id: 'r-global-1',
-        studentId: 'GLOBAL_COMMON',
-        date: '2026-06-01',
-        activity: 'Lễ Tiếp Nhận & Khai Giảng Khóa Huấn Luyện',
-        squad: 'ALL',
-        behaviorRating: '',
-        physicalRating: '',
-        comment: 'Ban Chỉ Huy Tổng xin trân trọng thông báo: Đã hoàn tất công tác tiếp nhận toàn bộ các chiến sĩ nhí an toàn. Các tiểu đội đã được phân bổ quân số đầy đủ, nhận quân trang và đang bắt đầu sinh hoạt làm quen tại hội trường lớn. Kính chúc quý phụ huynh an tâm công tác.',
-        image: 'https://images.unsplash.com/photo-1531685250784-7569952593d2?auto=format&fit=crop&q=80&w=600',
-      },
-      {
-        id: 'r-1',
-        studentId: 'CS001',
-        date: '2026-06-01',
-        activity: 'Huấn luyện điều lệnh đội ngũ & gấp nội vụ quân đội',
-        squad: 1,
-        behaviorRating: 'Xuất Sắc',
-        physicalRating: 'Tốt',
-        comment: 'Cháu Minh Quân hôm nay thực hiện điều lệnh đội ngũ rất nghiêm túc, tác phong nhanh nhẹn. Ăn uống hết suất và biết tự gấp chăn màn gọn gàng.',
-        image: APP_CONFIG.defaultImages.squad1,
-      },
-      {
-        id: 'r-2',
-        studentId: 'CS002',
-        date: '2026-06-01',
-        activity: 'Giờ học kỹ năng sơ cứu dã ngoại',
-        squad: 1,
-        behaviorRating: 'Tốt',
-        physicalRating: 'Tốt',
-        comment: 'Cháu Minh Thư tích cực tham gia hoạt động văn nghệ buổi tối. Trong giờ huấn luyện sơ cứu còn hơi rụt rè nhưng đã hoàn thành tốt nhiệm vụ.',
-        image: APP_CONFIG.defaultImages.squad2,
-      },
-      {
-        id: 'r-3',
-        studentId: 'CS003',
-        date: '2026-06-01',
-        activity: 'Chuyên đề phòng chống tệ nạn xã hội',
-        squad: 2,
-        behaviorRating: 'Tốt',
-        physicalRating: 'Khá',
-        comment: 'Chiến sĩ Bách hăng hái phát biểu trong giờ học chuyên đề phòng chống ma túy. Tinh thần đồng đội rất cao.',
-        image: APP_CONFIG.defaultImages.squad3,
-      },
-      {
-        id: 'r-common-1',
-        studentId: 'COMMON',
-        date: '2026-06-01',
-        activity: 'Hoạt động dã ngoại chung của Tiểu Đội',
-        squad: 1,
-        behaviorRating: 'Tốt',
-        physicalRating: 'Tốt',
-        comment: 'Hôm nay toàn Tiểu Đội 1 đã hoàn thành xuất sắc thử thách hành quân dã ngoại 5km băng rừng. Tinh thần kỷ luật tập thể rất cao, các chiến sĩ biết đùm bọc, giúp đỡ nhau lúc mệt mỏi.',
-        image: APP_CONFIG.defaultImages.squad4,
-      }
-    ];
-
-    // Helper functions cho LocalStorage
-    const storage = {
-      get: (key, defaultValue) => {
-        try {
-          const val = localStorage.getItem(key);
-          return val ? JSON.parse(val) : defaultValue;
-        } catch (e) {
-          console.error("Lỗi đọc LocalStorage cho key: " + key, e);
-          return defaultValue;
-        }
-      },
-      set: (key, value) => {
-        try {
-          localStorage.setItem(key, JSON.stringify(value));
-        } catch (e) {
-          console.error("Lỗi ghi LocalStorage cho key: " + key, e);
-        }
-      }
-    };
-
     // ============================================================================
-    // COMPONENT CHÍNH CỦA ỨNG DỤNG (HOÀN TOÀN BẰNG LOCALSTORAGE)
+    // COMPONENT CHÍNH CỦA ỨNG DỤNG - SỬ DỤNG HOÀN TOÀN CLOUD FIREBASE
     // ============================================================================
     function App() {
-      // State Quản lý Đa Khóa Học (Unlimited Courses)
-      const [courses, setCourses] = useState(() => storage.get('csni_courses', DEFAULT_COURSES));
+      // Xác định trạng thái người dùng Firebase
+      const [firebaseUser, setFirebaseUser] = useState(null);
+
+      // State Quản lý Đa Khóa Học (Sinh ra từ Cloud Firestore)
+      const [courses, setCourses] = useState([]);
       const [activeCourse, setActiveCourse] = useState(null);
       const [newCourseName, setNewCourseName] = useState('');
 
-      // State lưu trữ dữ liệu đồng bộ đám mây (bây giờ là LocalStorage)
+      // State lưu trữ dữ liệu đồng bộ đám mây
       const [students, setStudents] = useState([]);
       const [reports, setReports] = useState([]);
       const [squadCount, setSquadCount] = useState(5);
-      const [isInitializingData, setIsInitializingData] = useState(false);
 
       // Cấu hình kết nối Google Drive thông qua Apps Script
       const [driveScriptUrl, setDriveScriptUrl] = useState('');
@@ -471,70 +411,150 @@
       const [searchTerm, setSearchTerm] = useState('');
       const [squadFilter, setSquadFilter] = useState('ALL');
 
-      // Đồng bộ các khóa học sang localStorage khi thay đổi
-      useEffect(() => {
-        storage.set('csni_courses', courses);
-      }, [courses]);
+      const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+        window.__toastTimer && clearTimeout(window.__toastTimer); 
+        window.__toastTimer = setTimeout(() => setToast(null), 3500);
+      };
 
-      // ----------------------------------------------------------------------
-      // TẢI DỮ LIỆU CỦA KHÓA HỌC HIỆN TẠI TỪ LOCALSTORAGE
-      // ----------------------------------------------------------------------
+      // ============================================================================
+      // EFFECT 1: ĐĂNG NHẬP AN TOÀN TRƯỚC KHI TRUY VẤN (RULE 3)
+      // ============================================================================
       useEffect(() => {
-        if (!activeCourse) return;
+        if (!isFirebaseConfigured) return;
+        
+        const initAuth = async () => {
+          try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+              await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+              await signInAnonymously(auth);
+            }
+          } catch (error) {
+            console.error("Lỗi xác thực Firebase: ", error);
+            showToast("Gặp sự cố kết nối máy chủ bảo mật Firebase!", "error");
+          }
+        };
+
+        initAuth();
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+          setFirebaseUser(user);
+        });
+
+        return () => unsubscribe();
+      }, []);
+
+      // ============================================================================
+      // EFFECT 2: TỰ ĐỘNG ĐỒNG BỘ HOÁ DANH SÁCH KHÓA HỌC TỪ FIRESTORE (RULE 1 & 3)
+      // ============================================================================
+      useEffect(() => {
+        if (!firebaseUser || !db) return;
+
+        // Định vị collection chứa các khóa học theo cấu trúc bảo mật Rule 1
+        const coursesColRef = collection(db, 'artifacts', appId, 'public', 'data', 'courses');
+
+        const unsubscribe = onSnapshot(coursesColRef, (snapshot) => {
+          const loadedCourses = [];
+          snapshot.forEach((doc) => {
+            loadedCourses.push({ id: doc.id, ...doc.data() });
+          });
+          
+          // Sắp xếp khóa học theo ngày tạo
+          loadedCourses.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          setCourses(loadedCourses);
+        }, (error) => {
+          console.error("Lỗi lắng nghe dữ liệu khóa học: ", error);
+          showToast("Không thể tải danh sách khóa học từ máy chủ đám mây!", "error");
+        });
+
+        return () => unsubscribe();
+      }, [firebaseUser]);
+
+      // ============================================================================
+      // EFFECT 3: ĐỒNG BỘ DỮ LIỆU THỜI GIAN THỰC CỦA KHÓA HỌC ĐÃ CHỌN (REALTIME)
+      // ============================================================================
+      useEffect(() => {
+        if (!firebaseUser || !activeCourse || !db) return;
 
         const courseId = activeCourse.id;
 
-        // Tải danh sách học viên
-        let loadedStudents = storage.get(`csni_students_${courseId}`, null);
-        if (loadedStudents === null) {
-          if (courseId === 'course_1') {
-            loadedStudents = DEFAULT_STUDENTS;
+        // 1. Đồng bộ hóa học viên (Students)
+        const studentsCol = collection(db, 'artifacts', appId, 'public', 'data', 'students');
+        const unsubStudents = onSnapshot(studentsCol, (snapshot) => {
+          const allStudents = [];
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            // Lọc theo courseId trong Javascript (Tuân thủ Rule 2: Tránh truy vấn Where phức tạp)
+            if (data.courseId === courseId) {
+              allStudents.push({ id: doc.id, ...data });
+            }
+          });
+          setStudents(allStudents);
+        }, (err) => console.error("Lỗi đồng bộ danh sách học viên: ", err));
+
+        // 2. Đồng bộ hóa nhật ký hoạt động (Reports)
+        const reportsCol = collection(db, 'artifacts', appId, 'public', 'data', 'reports');
+        const unsubReports = onSnapshot(reportsCol, (snapshot) => {
+          const allReports = [];
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.courseId === courseId) {
+              allReports.push({ id: doc.id, ...data });
+            }
+          });
+          // Sắp xếp ngày giảm dần
+          allReports.sort((a, b) => b.date.localeCompare(a.date));
+          setReports(allReports);
+        }, (err) => console.error("Lỗi đồng bộ nhật ký hoạt động: ", err));
+
+        // 3. Đồng bộ hóa cấu hình (Config & Squad Passwords)
+        const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', courseId);
+        const unsubConfig = onSnapshot(configDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setDriveScriptUrl(data.driveScriptUrl || '');
+            setInputScriptUrl(data.driveScriptUrl || '');
+            setSquadCount(data.squadCount || 5);
+            setSquadPasswords(data.squadPasswords || {
+              'BCHTONG_PASS': 'BCHTONG_2026',
+              'TD01': '123456',
+              'TD02': '123456',
+              'TD03': '123456',
+              'TD04': '123456',
+              'TD05': '123456',
+            });
           } else {
-            loadedStudents = [];
+            // Tạo cấu hình mặc định ban đầu nếu chưa tồn tại trên đám mây
+            const defaultConfig = {
+              driveScriptUrl: '',
+              squadCount: 5,
+              squadPasswords: {
+                'BCHTONG_PASS': 'BCHTONG_2026',
+                'TD01': '123456',
+                'TD02': '123456',
+                'TD03': '123456',
+                'TD04': '123456',
+                'TD05': '123456',
+              }
+            };
+            setDoc(configDocRef, defaultConfig);
+            setSquadCount(5);
+            setSquadPasswords(defaultConfig.squadPasswords);
           }
-          storage.set(`csni_students_${courseId}`, loadedStudents);
-        }
-        setStudents(loadedStudents);
+        }, (err) => console.error("Lỗi đồng bộ cấu hình tiểu đội: ", err));
 
-        // Tải danh sách báo cáo
-        let loadedReports = storage.get(`csni_reports_${courseId}`, null);
-        if (loadedReports === null) {
-          if (courseId === 'course_1') {
-            loadedReports = DEFAULT_REPORTS;
-          } else {
-            loadedReports = [];
-          }
-          storage.set(`csni_reports_${courseId}`, loadedReports);
-        }
-        setReports(loadedReports.sort((a, b) => b.date.localeCompare(a.date)));
-
-        // Tải cấu hình Drive
-        const loadedDriveUrl = storage.get(`csni_drive_url_${courseId}`, '');
-        setDriveScriptUrl(loadedDriveUrl);
-        setInputScriptUrl(loadedDriveUrl);
-
-        // Tải mật khẩu các tiểu đội (nếu trống thì cấu hình mặc định)
-        const defaultPasswords = {
-          'BCHTONG_PASS': 'BCHTONG_2026',
-          'TD01': '123456',
-          'TD02': '123456',
-          'TD03': '123456',
-          'TD04': '123456',
-          'TD05': '123456',
-        };
-        const loadedPasswords = storage.get(`csni_squad_passwords_${courseId}`, defaultPasswords);
-        setSquadPasswords(loadedPasswords);
-
-        // Tải số lượng tiểu đội
-        const loadedSquadCount = storage.get(`csni_squad_count_${courseId}`, 5);
-        setSquadCount(loadedSquadCount);
-
-        // Reset một số state đăng nhập/chỉnh sửa
+        // Reset các trường nhập liệu khi đổi khóa học
         setSelectedStudent(null);
         setEditingReportId(null);
         setEditingStudentId(null);
 
-      }, [activeCourse]);
+        return () => {
+          unsubStudents();
+          unsubReports();
+          unsubConfig();
+        };
+
+      }, [firebaseUser, activeCourse]);
 
       const getSquadCodes = () => {
         const codes = {};
@@ -546,42 +566,45 @@
 
       const squadCodes = getSquadCodes();
 
-      const showToast = (message, type = 'success') => {
-        setToast({ message, type });
-        window.__toastTimer && clearTimeout(window.__toastTimer); 
-        window.__toastTimer = setTimeout(() => setToast(null), 3500);
-      };
-
       const handleUnlockSettings = (e) => {
         e.preventDefault();
         if (masterPassInput === '290506050206') {
           setIsSettingsUnlocked(true);
-          showToast('Đã mở khóa cài đặt hệ thống thành công!');
+          showToast('Đã mở khóa cấu hình hệ thống thành công!');
           setMasterPassInput('');
         } else {
           showToast('Mã bảo mật không chính xác!', 'error');
         }
       };
 
-      // TẠO KHÓA HỌC MỚI
-      const handleCreateCourse = (e) => {
+      // ============================================================================
+      // TÁC VỤ 1: TẠO KHÓA HUẤN LUYỆN MỚI TRÊN CLOUD FIRESTORE
+      // ============================================================================
+      const handleCreateCourse = async (e) => {
         e.preventDefault();
+        if (!firebaseUser || !db) {
+          showToast('Vui lòng hoàn tất cấu hình dán API Key trước khi thực hiện!', 'error');
+          return;
+        }
         if (!newCourseName.trim()) {
           showToast('Vui lòng nhập tên khóa huấn luyện!', 'error'); 
           return;
         }
         
         const newId = `course_${Date.now()}`;
-        const newCourse = {
-          id: newId,
-          name: newCourseName.trim(),
-          createdAt: Date.now()
-        };
-        
-        const updatedCourses = [...courses, newCourse];
-        setCourses(updatedCourses);
-        showToast('Đã tạo khóa huấn luyện mới thành công!');
-        setNewCourseName('');
+        try {
+          const newCourseRef = doc(db, 'artifacts', appId, 'public', 'data', 'courses', newId);
+          await setDoc(newCourseRef, {
+            name: newCourseName.trim(),
+            createdAt: Date.now()
+          });
+          
+          showToast('Đã tạo khóa huấn luyện mới thành công trên Cloud!');
+          setNewCourseName('');
+        } catch (error) {
+          console.error("Lỗi khi lưu khóa học mới: ", error);
+          showToast("Không thể tạo khóa huấn luyện trên Firestore!", "error");
+        }
       };
 
       // ĐỔI KHÓA HỌC (QUAY VỀ MÀN HÌNH CHỌN)
@@ -605,9 +628,18 @@
         handleCancelEditStudent();
       };
 
-      // ----------------------------------------------------------------------
+      // ĐĂNG XUẤT TÀI KHOẢN
+      const handleLogout = () => {
+        setRole(null);
+        setLoggedInParentStudents([]);
+        setSelectedChild(null);
+        setLoggedInSquad(null);
+        setSelectedStudent(null);
+        setCurrentView('landing');
+        showToast("Đã đăng xuất tài khoản!");
+      };
+
       // BỘ CHUYỂN ĐỔI LIÊN KẾT GOOGLE DRIVE THÀNH LIÊN KẾT HIỂN THỊ ẢNH TRỰC TIẾP
-      // ----------------------------------------------------------------------
       const parseAndConvertDriveUrl = (url) => {
         if (!url) return '';
         const trimmedUrl = url.trim();
@@ -630,47 +662,25 @@
         return trimmedUrl;
       };
 
-      // ----------------------------------------------------------------------
       // HÀM HELPER TẢI ẢNH AN TOÀN VƯỢT CORS PROXY DÀNH CHO GOOGLE DRIVE
-      // ----------------------------------------------------------------------
       const fetchImageAsBlob = async (url) => {
         try {
           const response = await fetch(url);
           if (response.ok) return await response.blob();
         } catch (e) {
-          console.warn("Tải trực tiếp thất bại do lỗi CORS, kích hoạt CORS Proxy chuyên dụng cho url:", url);
+          console.warn("Tải trực tiếp thất bại do lỗi CORS, kích hoạt CORS Proxy cho url:", url);
         }
 
         try {
           const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(url)}`;
           const response = await fetch(proxyUrl);
           if (response.ok) return await response.blob();
-        } catch (e) {
-          console.warn("wsrv.nl thất bại, chuyển hướng cổng dự phòng corsproxy.io...");
-        }
+        } catch (e) {}
 
-        try {
-          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-          const response = await fetch(proxyUrl);
-          if (response.ok) return await response.blob();
-        } catch (e) {
-          console.warn("Cổng corsproxy.io gặp sự cố, đang chuyển sang cổng api.allorigins.win...");
-        }
-
-        try {
-          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-          const response = await fetch(proxyUrl);
-          if (response.ok) return await response.blob();
-        } catch (e) {
-          console.error("Mọi nỗ lực vượt CORS qua proxy đều thất bại:", url);
-        }
-
-        throw new Error("Không thể tải ảnh qua bất kỳ giao thức nào.");
+        throw new Error("Không thể tải ảnh.");
       };
 
-      // ----------------------------------------------------------------------
       // HÀM TẢI TOÀN BỘ ẢNH (DÙNG JSZIP) DÀNH CHO BCH TỔNG
-      // ----------------------------------------------------------------------
       const handleDownloadAllImages = async () => {
         const reportsWithImages = reports.filter(r => r.image && r.image.trim() !== '');
         
@@ -679,7 +689,7 @@
           return;
         }
 
-        showToast(`Đang thu thập và tải ${reportsWithImages.length} hình ảnh... Vui lòng đợi trong giây lát.`);
+        showToast(`Đang thu thập và tải ${reportsWithImages.length} hình ảnh... Vui lòng đợi.`);
         setIsDownloadingAll(true);
 
         try {
@@ -687,55 +697,35 @@
           const imgFolder = zip.folder(`HinhAnh_${activeCourse.name.replace(/[^a-z0-9]/gi, '_')}`);
 
           let successCount = 0;
-          let failCount = 0;
-
           for (let i = 0; i < reportsWithImages.length; i++) {
             const report = reportsWithImages[i];
             let imageUrl = parseAndConvertDriveUrl(report.image);
-
             try {
               const blob = await fetchImageAsBlob(imageUrl);
               const dateStr = report.date.replace(/-/g, '');
               let studentName = report.studentId === 'COMMON' ? `Chung_TD${report.squad}` : (report.studentId === 'GLOBAL_COMMON' ? 'THONG_BAO_TOAN_KHOA' : report.studentId);
               const safeName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
               const filename = `CSN2026_${dateStr}_${safeName}_${i+1}.jpg`;
-              
               imgFolder.file(filename, blob);
               successCount++;
-            } catch (err) {
-              console.warn("Thất bại khi tải tệp ảnh:", imageUrl, err);
-              failCount++;
-            }
+            } catch (err) {}
           }
 
           if (successCount > 0) {
-            showToast(`Đang nén và đóng gói ZIP cho ${successCount} ảnh thành công...`);
             const content = await zip.generateAsync({type:"blob"});
-            const saveAsFn = window.saveAs || (window.FileSaver && window.FileSaver.saveAs);
-            if (!saveAsFn) {
-              throw new Error('FileSaver chưa được tải');
-            }
-            saveAsFn(content, `HinhAnh_${activeCourse.name.replace(/[^a-z0-9]/gi, '_')}.zip`);
-            
-            if (failCount > 0) {
-                showToast(`Hoàn tất! Tải thành công ${successCount} ảnh. Có ${failCount} ảnh lỗi đường truyền/chặn quyền.`, 'error');
-            } else {
-                showToast(`Đã tải xuống thành công toàn bộ ${successCount} ảnh của hệ thống!`);
-            }
+            window.saveAs(content, `HinhAnh_${activeCourse.name.replace(/[^a-z0-9]/gi, '_')}.zip`);
+            showToast(`Đã tải xuống thành công ${successCount} ảnh!`);
           } else {
-            showToast('Lỗi bảo mật! Không có bức ảnh nào vượt qua được tường lửa CORS. Hãy kiểm tra lại kết nối mạng!', 'error');
+            showToast('Lỗi! Không có bức ảnh nào tải được qua CORS.', 'error');
           }
         } catch (error) {
-          showToast('Đã xảy ra sự cố trong hệ thống khi tạo file ZIP!', 'error');
-          console.error(error);
+          showToast('Lỗi tạo file ZIP!', 'error');
         } finally {
           setIsDownloadingAll(false);
         }
       };
 
-      // ----------------------------------------------------------------------
       // BỘ LỌC TÌM KIẾM HỌC VIÊN TOÀN KHÓA
-      // ----------------------------------------------------------------------
       const filteredStudents = students.filter(s => {
         if (squadFilter !== 'ALL') {
           const targetSquad = parseInt(squadFilter);
@@ -756,20 +746,14 @@
         );
       });
 
-      // ----------------------------------------------------------------------
       // ĐĂNG NHẬP PHỤ HUYNH
-      // ----------------------------------------------------------------------
       const handleParentLogin = (e) => {
         e.preventDefault();
         const input = parentInput.trim();
         const passwordInput = parentPasswordInput.trim();
 
-        if (!input) {
-          showToast('Vui lòng điền Số điện thoại hoặc Email để tiếp tục!', 'error');
-          return;
-        }
-        if (!passwordInput) {
-          showToast('Vui lòng nhập Mật khẩu Phụ Huynh!', 'error');
+        if (!input || !passwordInput) {
+          showToast('Vui lòng điền đủ thông tin!', 'error');
           return;
         }
 
@@ -784,15 +768,13 @@
           setSelectedChild(foundChildren[0]);
           setRole('parent');
           setCurrentView('parent_dashboard');
-          showToast(`Chào mừng phụ huynh! Đã liên kết thành công ${foundChildren.length} con em.`);
+          showToast(`Chào mừng phụ huynh! Đã tải ${foundChildren.length} hồ sơ con em.`);
         } else {
-          showToast('SĐT/Email hoặc Mật khẩu không chính xác!', 'error');
+          showToast('SĐT/Email hoặc Mật khẩu không khớp!', 'error');
         }
       };
 
-      // ----------------------------------------------------------------------
       // ĐĂNG NHẬP BAN CHỈ HUY
-      // ----------------------------------------------------------------------
       const handleCommanderLogin = (e) => {
         e.preventDefault();
         const squadCode = squadCodeSelect.trim().toUpperCase();
@@ -803,7 +785,6 @@
           return;
         }
 
-        // Kiểm tra quyền đăng nhập của BCH Tổng
         if (squadCode === 'BCHTONG') {
           const generalPass = squadPasswords['BCHTONG_PASS'] || 'BCHTONG_2026';
           if (inputPass === generalPass) {
@@ -818,162 +799,185 @@
         }
 
         const configuredPassword = squadPasswords[squadCode];
-        
-        if (configuredPassword) {
-          if (inputPass === configuredPassword) {
-            const squadNum = parseInt(squadCode.replace('TD', ''));
-            setLoggedInSquad(squadNum);
-            setRole('commander');
-            setCurrentView('commander_dashboard');
-            showToast(`Đăng nhập thành công! Chỉ Huy Tiểu Đội ${squadNum}`);
-          } else {
-            showToast('Mật khẩu Tiểu Đội không chính xác!', 'error');
-          }
+        if (configuredPassword && inputPass === configuredPassword) {
+          const squadNum = parseInt(squadCode.replace('TD', ''));
+          setLoggedInSquad(squadNum);
+          setRole('commander');
+          setCurrentView('commander_dashboard');
+          showToast(`Đăng nhập thành công! Chỉ Huy Tiểu Đội ${squadNum}`);
         } else {
-          showToast('Mật khẩu cho tiểu đội này chưa được thiết lập trên hệ thống!', 'error');
+          showToast('Mật khẩu không chính xác!', 'error');
         }
       };
 
-      // LƯU CẤU HÌNH DRIVE
-      const handleSaveDriveConfig = (e) => {
+      // TÁC VỤ 2: LƯU CẤU HÌNH DRIVE LÊN CLOUD FIRESTORE
+      const handleSaveDriveConfig = async (e) => {
         e.preventDefault();
-        if (!activeCourse) return;
+        if (!firebaseUser || !activeCourse || !db) return;
 
         const updatedUrl = inputScriptUrl.trim();
-        setDriveScriptUrl(updatedUrl);
-        storage.set(`csni_drive_url_${activeCourse.id}`, updatedUrl);
-        showToast('Đã lưu cấu hình Cổng tải ảnh Google Drive thành công!');
+        try {
+          const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', activeCourse.id);
+          await setDoc(configDocRef, {
+            driveScriptUrl: updatedUrl,
+            squadCount,
+            squadPasswords
+          }, { merge: true });
+
+          setDriveScriptUrl(updatedUrl);
+          showToast('Đã đồng bộ cổng Google Drive lên đám mây!');
+        } catch (error) {
+          showToast("Gặp sự cố khi đồng bộ cấu hình!", "error");
+        }
       };
 
-      // LƯU MẬT KHẨU TIỂU ĐỘI
-      const handleSaveSquadPasswords = (code, password) => {
-        if (!activeCourse) return;
+      // TÁC VỤ 3: LƯU MẬT KHẨU TIỂU ĐỘI LÊN CLOUD FIRESTORE
+      const handleSaveSquadPasswords = async (code, password) => {
+        if (!firebaseUser || !activeCourse || !db) return;
         
         const updatedPasswords = {
           ...squadPasswords,
           [code]: password.trim()
         };
-        setSquadPasswords(updatedPasswords);
-        storage.set(`csni_squad_passwords_${activeCourse.id}`, updatedPasswords);
-        showToast(`Cập nhật mật khẩu cho ${code} thành công!`);
+
+        try {
+          const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', activeCourse.id);
+          await setDoc(configDocRef, {
+            squadPasswords: updatedPasswords
+          }, { merge: true });
+
+          setSquadPasswords(updatedPasswords);
+          showToast(`Đã lưu mật khẩu mới cho ${code}!`);
+        } catch (error) {
+          showToast("Không thể đồng bộ thay đổi mật khẩu!", "error");
+        }
       };
 
-      // ĐIỀU CHỈNH SỐ LƯỢNG TIỂU ĐỘI
-      const handleUpdateSquadCount = (newCount) => {
-        if (!activeCourse) return;
+      // TÁC VỤ 4: ĐIỀU CHỈNH QUY MÔ TIỂU ĐỘI LÊN CLOUD FIRESTORE
+      const handleUpdateSquadCount = async (newCount) => {
+        if (!firebaseUser || !activeCourse || !db) return;
         const count = Math.max(1, newCount);
-        setSquadCount(count);
-        storage.set(`csni_squad_count_${activeCourse.id}`, count);
+
+        try {
+          const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', activeCourse.id);
+          await setDoc(configDocRef, {
+            squadCount: count
+          }, { merge: true });
+
+          setSquadCount(count);
+          showToast(`Đã đổi quy mô lên ${count} tiểu đội!`);
+        } catch (error) {
+          showToast("Gặp sự cố khi lưu quy mô huấn luyện!", "error");
+        }
       };
 
-      // ----------------------------------------------------------------------
-      // THÊM/SỬA NHẬT KÝ HOẠT ĐỘNG
-      // ----------------------------------------------------------------------
-      const handleAddNewReport = (e) => {
-        e.preventDefault();
-        if (!selectedStudent || !activeCourse) {
-          showToast('Vui lòng chọn đối tượng để gửi nhận xét!', 'error');
-          return;
+      // KHỞI ĐỘNG CHỈNH SỬA NHẬT KÝ
+      const handleStartEditReport = (report) => {
+        setEditingReportId(report.id);
+        setNewReportDate(report.date);
+        setNewActivity(report.activity);
+        setNewBehaviorRating(report.behaviorRating || 'Tốt');
+        setNewPhysicalRating(report.physicalRating || 'Tốt');
+        setNewComment(report.comment);
+        setNewImage(report.image || '');
+        
+        // Định dạng đối tượng ảo để hiển thị đúng form
+        if (report.studentId === 'COMMON') {
+          setSelectedStudent({ id: 'COMMON', name: 'Nhận xét Chung Toàn Tiểu Đội', squad: report.squad });
+        } else if (report.studentId === 'GLOBAL_COMMON') {
+          setSelectedStudent({ id: 'GLOBAL_COMMON', name: 'Nhận xét Chung Tất Cả Tiểu Đội', squad: 'ALL' });
+        } else {
+          const foundStd = students.find(s => s.id === report.studentId);
+          setSelectedStudent(foundStd || { id: report.studentId, name: `Học sinh (${report.studentId})`, squad: report.squad });
         }
         
-        if (selectedStudent.id === 'GLOBAL_COMMON' && role !== 'general') {
-            showToast('Chỉ có Ban Chỉ Huy Tổng mới có quyền gửi Thông Báo Toàn Khóa!', 'error');
-            return;
+        // Scroll mượt đến form viết đánh giá nếu trên di động
+        if (window.innerWidth < 1024) {
+          setTimeout(() => document.getElementById('report-form')?.scrollIntoView({ behavior: 'smooth' }), 100);
         }
+      };
 
-        if (!newActivity.trim()) {
-          showToast('Vui lòng điền Tên hoạt động!', 'error');
+      // TÁC VỤ 5: THÊM / CẬP NHẬT NHẬT KÝ RÈN LUYỆN LÊN CLOUD FIRESTORE
+      const handleAddNewReport = async (e) => {
+        e.preventDefault();
+        if (!firebaseUser || !selectedStudent || !activeCourse || !db) return;
+        
+        if (selectedStudent.id === 'GLOBAL_COMMON' && role !== 'general') {
+          showToast('Chỉ có Ban Chỉ Huy Tổng mới gửi được Thông Báo Toàn Khóa!', 'error');
           return;
         }
-        if (!newComment.trim()) {
-          showToast('Nội dung nhận xét không được bỏ trống!', 'error');
+
+        if (!newActivity.trim() || !newComment.trim()) {
+          showToast('Vui lòng điền đầy đủ nội dung rèn luyện!', 'error');
           return;
         }
 
         let processedImageUrl = parseAndConvertDriveUrl(newImage);
-
         if (!processedImageUrl) {
           processedImageUrl = APP_CONFIG.defaultImages.squad1;
         }
 
         const targetSquad = selectedStudent.id === 'GLOBAL_COMMON' ? 'ALL' : (role === 'commander' ? loggedInSquad : selectedStudent.squad);
 
-        if (role === 'commander' && selectedStudent.id !== 'COMMON' && selectedStudent.squad !== loggedInSquad) {
-          showToast('Bạn không có thẩm quyền đối với học viên tiểu đội khác!', 'error');
-          return;
-        }
+        try {
+          if (editingReportId) {
+            const reportDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'reports', editingReportId);
+            await setDoc(reportDocRef, {
+              date: newReportDate,
+              activity: newActivity,
+              behaviorRating: newBehaviorRating,
+              physicalRating: newPhysicalRating,
+              comment: newComment,
+              image: processedImageUrl
+            }, { merge: true });
 
-        let updatedReports = [...reports];
-
-        if (editingReportId) {
-          // Cập nhật báo cáo đã có
-          updatedReports = updatedReports.map(r => r.id === editingReportId ? {
-            ...r,
-            date: newReportDate,
-            activity: newActivity,
-            behaviorRating: newBehaviorRating,
-            physicalRating: newPhysicalRating,
-            comment: newComment,
-            image: processedImageUrl
-          } : r);
-
-          showToast(`Đã cập nhật nhật ký thành công!`);
-          setEditingReportId(null);
-          
-          if (role === 'general') {
+            showToast(`Đã cập nhật dữ liệu thành công!`);
+            setEditingReportId(null);
             setSelectedStudent(null);
+          } else {
+            const newId = `r-${Date.now()}`;
+            const reportDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'reports', newId);
+            await setDoc(reportDocRef, {
+              courseId: activeCourse.id,
+              studentId: selectedStudent.id,
+              date: newReportDate,
+              activity: newActivity,
+              squad: targetSquad,
+              behaviorRating: newBehaviorRating,
+              physicalRating: newPhysicalRating,
+              comment: newComment,
+              image: processedImageUrl
+            });
+
+            showToast(`Đã gửi đánh giá thành công!`);
             setNewActivity('');
             setNewComment('');
+            setNewImage('');
+            setSelectedStudent(null);
           }
-        } else {
-          // Thêm mới báo cáo
-          const newId = `r-${Date.now()}`;
-          const newReportObj = {
-            id: newId,
-            studentId: selectedStudent.id,
-            date: newReportDate,
-            activity: newActivity,
-            squad: targetSquad,
-            behaviorRating: newBehaviorRating,
-            physicalRating: newPhysicalRating,
-            comment: newComment,
-            image: processedImageUrl
-          };
-
-          updatedReports.push(newReportObj);
-          showToast(`Đã gửi đánh giá/thông báo thành công lên hệ thống!`);
-          
-          setNewActivity('');
-          setNewComment('');
-          setNewImage('');
-          setCustomImageFile(null);
-          setSelectedStudent(null);
+        } catch (error) {
+          showToast("Không thể đồng bộ nhật ký rèn luyện!", "error");
         }
-
-        // Sắp xếp lại theo ngày giảm dần
-        const sortedReports = updatedReports.sort((a, b) => b.date.localeCompare(a.date));
-        setReports(sortedReports);
-        storage.set(`csni_reports_${activeCourse.id}`, sortedReports);
       };
 
-      // ----------------------------------------------------------------------
-      // BCH TỔNG THAO TÁC CẬP NHẬT TRỰC TIẾP SQUAD
-      // ----------------------------------------------------------------------
-      const handleUpdateStudentSquad = (studentId, newSquadValue) => {
-        if (!activeCourse) return;
+      // TÁC VỤ 6: CHUYỂN TIỂU ĐỘI CHO CHIẾN SĨ (BCH TỔNG) TRÊN FIRESTORE
+      const handleUpdateStudentSquad = async (studentId, newSquadValue) => {
+        if (!firebaseUser || !activeCourse || !db) return;
         const newSquadNum = parseInt(newSquadValue);
         
-        const updatedStudents = students.map(s => s.id === studentId ? {
-          ...s,
-          squad: newSquadNum
-        } : s);
+        try {
+          const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', studentId);
+          await setDoc(studentDocRef, {
+            squad: newSquadNum
+          }, { merge: true });
 
-        setStudents(updatedStudents);
-        storage.set(`csni_students_${activeCourse.id}`, updatedStudents);
-        showToast(`Đã chuyển chiến sĩ sang ${newSquadNum === 0 ? 'Chờ phân đội' : `Tiểu Đội ${newSquadNum}`} thành công!`);
+          showToast(`Đã biên chế chiến sĩ vào đơn vị mới.`);
+        } catch (error) {
+          showToast("Gặp sự cố đồng bộ hóa phân đội!", "error");
+        }
       };
 
-      // BẮT ĐẦU SỬA CHI TIẾT THÔNG TIN HỌC VIÊN
+      // KHỞI ĐỘNG CHỈNH SỬA THÔNG TIN HỌC VIÊN (BCH TỔNG)
       const handleStartEditStudent = (student) => {
         setEditingStudentId(student.id);
         setNewStudentName(student.name);
@@ -981,8 +985,8 @@
         setNewStudentEmail(student.parentEmail || '');
         setNewStudentAvatar(student.avatar || 'nam.png');
         
+        // Cuộn mượt đến biểu mẫu sửa
         setTimeout(() => document.getElementById('student-form')?.scrollIntoView({ behavior: 'smooth' }), 100);
-        showToast(`Đã nạp thông tin để sửa học viên: ${student.name}`);
       };
 
       // HUỶ EDIT HỌC VIÊN
@@ -994,86 +998,73 @@
         setNewStudentAvatar('nam.png');
       };
 
-      // ----------------------------------------------------------------------
-      // THÊM/CẬP NHẬT THÔNG TIN HỌC VIÊN
-      // ----------------------------------------------------------------------
-      const handleAddStudentByGeneral = (e) => {
+      // TÁC VỤ 7: ĐĂNG KÝ/CẬP NHẬT CHIẾN SĨ LÊN FIRESTORE
+      const handleAddStudentByGeneral = async (e) => {
         e.preventDefault();
-        if (!newStudentName.trim() || !activeCourse) {
-          showToast('Vui lòng điền Họ và tên chiến sĩ nhí!', 'error');
-          return;
-        }
+        if (!firebaseUser || !newStudentName.trim() || !activeCourse || !db) return;
 
         const phoneInput = newStudentPhoneState.trim();
         const emailInput = newStudentEmail.trim().toLowerCase();
 
         if (!phoneInput && !emailInput) {
-          showToast('Vui lòng điền ít nhất Số điện thoại hoặc Email phụ huynh!', 'error');
+          showToast('Vui lòng điền SĐT hoặc Email phụ huynh!', 'error');
           return;
         }
 
-        let updatedStudents = [...students];
+        try {
+          if (editingStudentId) {
+            const existingSibling = students.find(s => s.id !== editingStudentId && (
+              (phoneInput && s.parentPhone && s.parentPhone === phoneInput) ||
+              (emailInput && s.parentEmail && s.parentEmail.toLowerCase() === emailInput)
+            ));
 
-        if (editingStudentId) {
-          const existingSibling = students.find(s => s.id !== editingStudentId && (
-            (phoneInput && s.parentPhone && s.parentPhone === phoneInput) ||
-            (emailInput && s.parentEmail && s.parentEmail.toLowerCase() === emailInput)
-          ));
+            const finalPassword = existingSibling && existingSibling.parentPassword
+              ? existingSibling.parentPassword
+              : createParentPasswordByLogic(phoneInput || '1234', editingStudentId);
 
-          const finalPassword = existingSibling && existingSibling.parentPassword
-            ? existingSibling.parentPassword
-            : createParentPasswordByLogic(phoneInput || '1234', editingStudentId);
+            const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', editingStudentId);
+            await setDoc(studentDocRef, {
+              name: newStudentName.trim(),
+              avatar: newStudentAvatar,
+              parentPhone: phoneInput,
+              parentEmail: emailInput,
+              parentPassword: finalPassword
+            }, { merge: true });
 
-          updatedStudents = updatedStudents.map(s => s.id === editingStudentId ? {
-            ...s,
-            name: newStudentName.trim(),
-            avatar: newStudentAvatar,
-            parentPhone: phoneInput,
-            parentEmail: emailInput,
-            parentPassword: finalPassword
-          } : s);
-
-          showToast(`Đã lưu thay đổi thông tin học viên ${newStudentName.trim()} thành công!`);
-          handleCancelEditStudent();
-        } else {
-          const newId = `CS${Date.now()}`;
-
-          const existingSibling = students.find(s => {
-            const matchPhone = phoneInput && s.parentPhone && s.parentPhone === phoneInput;
-            const matchEmail = emailInput && s.parentEmail && s.parentEmail.toLowerCase() === emailInput;
-            return matchPhone || matchEmail;
-          });
-
-          const finalPassword = existingSibling && existingSibling.parentPassword
-            ? existingSibling.parentPassword
-            : createParentPasswordByLogic(phoneInput || '1234', newId);
-
-          const newStudentObj = {
-            id: newId,
-            name: newStudentName.trim(),
-            squad: 0,
-            avatar: newStudentAvatar,
-            parentPhone: phoneInput, 
-            parentEmail: emailInput,   
-            parentPassword: finalPassword
-          };
-
-          updatedStudents.push(newStudentObj);
-
-          if (existingSibling) {
-            showToast(`Đã lưu ${newStudentObj.name} và tự động DÙNG CHUNG mật khẩu với chiến sĩ nhí ${existingSibling.name}!`);
+            showToast(`Đã cập nhật thông tin thành công!`);
+            handleCancelEditStudent();
           } else {
-            showToast(`Đã thêm học sinh ${newStudentObj.name} (Mật khẩu: ${finalPassword}) - Trạng thái: Chờ phân tiểu đội!`);
+            const newId = `CS${Date.now()}`;
+            const existingSibling = students.find(s => {
+              const matchPhone = phoneInput && s.parentPhone && s.parentPhone === phoneInput;
+              const matchEmail = emailInput && s.parentEmail && s.parentEmail.toLowerCase() === emailInput;
+              return matchPhone || matchEmail;
+            });
+
+            const finalPassword = existingSibling && existingSibling.parentPassword
+              ? existingSibling.parentPassword
+              : createParentPasswordByLogic(phoneInput || '1234', newId);
+
+            const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', newId);
+            await setDoc(studentDocRef, {
+              courseId: activeCourse.id,
+              name: newStudentName.trim(),
+              squad: 0,
+              avatar: newStudentAvatar,
+              parentPhone: phoneInput, 
+              parentEmail: emailInput,   
+              parentPassword: finalPassword
+            });
+
+            showToast(`Đã đăng ký chiến sĩ thành công trên máy chủ đám mây!`);
+            setNewStudentName('');
+            setNewStudentPhone('');
+            setNewStudentEmail('');
           }
-
-          setNewStudentName('');
-          setNewStudentPhone('');
-          setNewStudentEmail('');
-          setNewStudentAvatar('nam.png');
+        } catch (error) {
+          console.error(error);
+          showToast("Không thể cập nhật hồ sơ chiến sĩ!", "error");
         }
-
-        setStudents(updatedStudents);
-        storage.set(`csni_students_${activeCourse.id}`, updatedStudents);
       };
 
       const handleDeleteStudent = (id) => {
@@ -1082,90 +1073,37 @@
           isOpen: true,
           type: 'student',
           id: id,
-          message: `Bạn có chắc chắn muốn xóa vĩnh viễn chiến sĩ nhí ${student ? student.name : ''} (Mã: ${id}) khỏi hệ thống? Mọi nhật ký rèn luyện liên quan cũng sẽ bị xóa.`
+          message: `Bạn có chắc chắn muốn xóa vĩnh viễn chiến sĩ nhí ${student?.name} (Mã: ${id}) khỏi hệ thống?`
         });
       };
 
-      // XÓA HỌC VIÊN KHỎI HỆ THỐNG
-      const executeDeleteStudent = (id) => {
-        if (!activeCourse) return;
-        
-        const updatedStudents = students.filter(s => s.id !== id);
-        const updatedReports = reports.filter(r => r.studentId !== id);
+      // TÁC VỤ 8: XOÁ CHIẾN SĨ VÀ XOÁ BÁO CÁO TRÊN FIRESTORE
+      const executeDeleteStudent = async (id) => {
+        if (!firebaseUser || !activeCourse || !db) return;
+        try {
+          const studentDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', id);
+          await deleteDoc(studentDocRef);
 
-        setStudents(updatedStudents);
-        setReports(updatedReports);
+          const reportsToDelete = reports.filter(r => r.studentId === id);
+          for (let report of reportsToDelete) {
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'reports', report.id));
+          }
 
-        storage.set(`csni_students_${activeCourse.id}`, updatedStudents);
-        storage.set(`csni_reports_${activeCourse.id}`, updatedReports);
-
-        showToast('Đã xóa vĩnh viễn học viên và nhật ký liên quan.');
-        if (editingStudentId === id) {
-          handleCancelEditStudent();
+          showToast('Đã xóa hồ sơ và tất cả báo cáo rèn luyện liên quan.');
+          if (editingStudentId === id) handleCancelEditStudent();
+        } catch (error) {
+          showToast("Không thể xóa học viên!", "error");
         }
       };
 
-      // XÓA BÁO CÁO KHỎI HỆ THỐNG
-      const executeDeleteReport = (id) => {
-        if (!activeCourse) return;
-
-        const updatedReports = reports.filter(r => r.id !== id);
-        setReports(updatedReports);
-        storage.set(`csni_reports_${activeCourse.id}`, updatedReports);
-
-        if (editingReportId === id) {
-          setEditingReportId(null);
-          setNewActivity('');
-          setNewComment('');
-          setSelectedStudent(null);
+      const executeDeleteReport = async (id) => {
+        if (!firebaseUser || !activeCourse || !db) return;
+        try {
+          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'reports', id));
+          showToast('Đã xóa vĩnh viễn báo cáo.');
+        } catch (error) {
+          showToast("Không thể xóa dữ liệu báo cáo!", "error");
         }
-        showToast('Đã xóa vĩnh viễn dữ liệu báo cáo.');
-      };
-
-      const handleStartEditReport = (report) => {
-        let student = null;
-        if (report.studentId === 'GLOBAL_COMMON') {
-          student = { id: 'GLOBAL_COMMON', name: 'Nhận xét Chung Tất Cả Tiểu Đội', squad: 'ALL' };
-        } else if (report.studentId === 'COMMON') {
-          student = { id: 'COMMON', name: `Nhận xét Chung Toàn Tiểu Đội ${report.squad}`, squad: report.squad };
-        } else {
-          student = students.find(s => s.id === report.studentId) || { id: report.studentId, name: `Chiến sĩ (${report.studentId})`, squad: report.squad };
-        }
-        
-        setSelectedStudent(student);
-        setEditingReportId(report.id);
-        setNewReportDate(report.date);
-        setNewActivity(report.activity);
-        setNewComment(report.comment);
-        setNewBehaviorRating(report.behaviorRating || 'Tốt');
-        setNewPhysicalRating(report.physicalRating || 'Tốt');
-        setNewImage(report.image);
-        setCustomImageFile(null);
-        
-        if (role !== 'general') {
-            setTimeout(() => document.getElementById('report-form')?.scrollIntoView({ behavior: 'smooth' }), 100);
-        }
-        showToast(`Đã nạp dữ liệu sửa chữa cho: ${student ? student.name : ''}`);
-      };
-
-      const handleLogout = () => {
-        setRole(null);
-        setCurrentView('landing');
-        setParentInput('');
-        setParentPasswordInput('');
-        setSquadPasswordInput('');
-        setLoggedInParentStudents([]);
-        setSelectedChild(null);
-        setLoggedInSquad(null);
-        setSelectedStudent(null);
-        setEditingReportId(null);
-        setNewActivity('');
-        setNewComment('');
-        setViewingStudent(null);
-        setIsSettingsUnlocked(false);
-        setMasterPassInput('');
-        handleCancelEditStudent();
-        showToast('Đã đăng xuất tài khoản an toàn.');
       };
 
       return (
@@ -1173,9 +1111,7 @@
           
           {/* TOAST THÔNG BÁO NỔI CHẠY KHẮP ỨNG DỤNG */}
           {toast && (
-            <div className={`fixed top-4 right-4 z-50 p-4 rounded-2xl shadow-xl text-xs font-bold animate-fadeIn transition-all flex items-center gap-2.5 ${
-              toast.type === 'error' ? 'bg-red-600 text-white shadow-red-200' : 'bg-slate-900 text-yellow-300 shadow-slate-300'
-            }`}>
+            <div className="fixed top-4 right-4 z-50 p-4 rounded-2xl shadow-xl text-xs font-bold animate-fadeIn transition-all flex items-center gap-2.5 bg-slate-900 text-yellow-300 shadow-slate-300">
               <span className="text-lg">📢</span>
               <span>{toast.message}</span>
             </div>
@@ -1184,7 +1120,6 @@
           {/* ===================== THANH ĐẦU TRANG CẢNH SÁT NHÂN DÂN NGUYÊN BẢN ===================== */}
           <header className="bg-custom-primary-dark text-white border-b-4 border-custom-accent sticky top-0 z-40 shadow-md">
             <div className="max-w-7xl mx-auto px-4 py-3 md:py-4 flex flex-wrap justify-between items-center gap-3">
-              
               <div className="flex items-center gap-2.5">
                 <Shield />
                 <div>
@@ -1222,49 +1157,121 @@
                     </button>
                   </div>
                 )}
-                {!role && !activeCourse && (
-                  <span className="text-[8px] md:text-[10px] font-black uppercase tracking-wider bg-black/25 text-emerald-300 px-2.5 py-1.5 rounded-lg border border-green-800 hidden sm:block">
-                    Học Kỹ Năng Sống • Rèn Bản Lĩnh
-                  </span>
-                )}
               </div>
-
             </div>
           </header>
 
           <main className="max-w-7xl mx-auto px-2 sm:px-4 py-4 md:py-8 flex-1 w-full">
             
-            {/* ===================== 0. TRANG CHỌN KHÓA HỌC (MULTI-COURSE) ===================== */}
+            {/* ===================== 0. TRANG CHỌN KHÓA HỌC ===================== */}
             {currentView === 'select_course' && (
                <div className="space-y-6 md:space-y-8 animate-fadeIn max-w-4xl mx-auto">
-                 <div className="text-center space-y-2">
-                    <h2 className="text-2xl md:text-3xl font-black text-custom-primary-dark">LỰA CHỌN KHÓA HUẤN LUYỆN</h2>
-                    <p className="text-slate-500 text-xs md:text-sm font-medium">Hệ thống lưu trữ độc lập theo từng khóa. Vui lòng chọn đúng khóa học của con em bạn.</p>
-                 </div>
+                 
+                 {/* 0.1 TRƯỜNG HỢP CHƯA CẤU HÌNH API KEY FIREBASE */}
+                 {!isFirebaseConfigured && (
+                   <div className="bg-white rounded-3xl p-6 md:p-8 shadow-xl border-t-8 border-red-500 space-y-6">
+                     <div className="text-center space-y-2">
+                       <span className="text-5xl">⚙️</span>
+                       <h2 className="text-xl md:text-2xl font-black text-red-700">ỨNG DỤNG CHƯA ĐƯỢC CẤU HÌNH FIREBASE</h2>
+                       <p className="text-slate-500 text-xs md:text-sm max-w-xl mx-auto">
+                         Sổ liên lạc cần kết nối tới dịch vụ lưu trữ đám mây Firebase của bạn để đồng bộ tác vụ viết nhận xét và hình ảnh theo thời gian thực.
+                       </p>
+                     </div>
+                     
+                     <div className="bg-slate-50 rounded-2xl p-4 md:p-5 border border-slate-200 text-xs text-slate-600 space-y-3 font-semibold leading-relaxed">
+                       <h4 className="font-extrabold text-slate-800 uppercase tracking-wider text-[11px] text-custom-primary">Các bước kích hoạt nhanh:</h4>
+                       <ol className="list-decimal pl-5 space-y-2 text-[11px] sm:text-xs">
+                         <li>Mở file <code className="bg-slate-200 px-1 py-0.5 rounded font-mono text-red-600">index.html</code> này bằng trình chỉnh sửa mã nguồn của bạn.</li>
+                         <li>Tìm đến dòng số <strong className="text-red-600">464</strong> chứa hằng số <code className="bg-slate-200 px-1.5 py-0.5 rounded font-mono text-slate-800">firebaseConfig</code>.</li>
+                         <li>Truy cập <a href="https://console.firebase.google.com" target="_blank" className="text-blue-600 underline">Firebase Console</a>, tạo một Project mới và bật **Firestore** + **Anonymous Authentication**.</li>
+                         <li>Sao chép thông số cấu hình Web App của bạn và dán đè vào hằng số <code className="bg-slate-200 px-1 py-0.5 rounded font-mono">firebaseConfig</code> rồi Lưu file lại.</li>
+                       </ol>
+                     </div>
 
-                 <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-5">
-                    {courses.map(course => (
+                     <div className="p-4 bg-yellow-50 rounded-2xl border border-yellow-200 text-xs text-amber-800 font-medium">
+                       💡 <strong>Mẹo mẫu cấu hình đúng dạng:</strong>
+                       <pre className="bg-slate-900 text-slate-300 p-3 rounded-xl mt-2 font-mono text-[10px] overflow-x-auto leading-relaxed">
+{`const firebaseConfig = {
+  apiKey: "AIzaSy...",
+  authDomain: "project-id.firebaseapp.com",
+  projectId: "project-id",
+  storageBucket: "project-id.appspot.com",
+  messagingSenderId: "1234567890",
+  appId: "1:1234567890:web:abcdef..."
+};`}
+                       </pre>
+                     </div>
+                   </div>
+                 )}
+
+                 {/* 0.2 TRƯỜNG HỢP ĐÃ CẤU HÌNH NHƯNG CƠ SỞ DỮ LIỆU ĐANG TRỐNG */}
+                 {isFirebaseConfigured && courses.length === 0 && (
+                   <div className="bg-white rounded-3xl p-6 md:p-10 shadow-xl border-t-8 border-custom-primary text-center space-y-5 max-w-lg mx-auto">
+                     <span className="text-6xl animate-bounce inline-block">🚀</span>
+                     <div>
+                       <h2 className="text-xl md:text-2xl font-black text-custom-primary-dark">KẾT NỐI ĐÁM MÂY THÀNH CÔNG!</h2>
+                       <p className="text-slate-500 text-xs md:text-sm mt-1">
+                         Cơ sở dữ liệu Firestore của bạn đang hoạt động nhưng chưa có khóa học nào được khởi tạo.
+                       </p>
+                     </div>
+
+                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-[11px] md:text-xs font-semibold text-slate-600 leading-relaxed text-left">
+                       💡 <strong>Cách bắt đầu:</strong> Hãy nhập tên khóa huấn luyện đầu tiên của chương trình hè vào ô bên dưới để mở lối truy cập trang quản lý Ban Chỉ Huy Tổng.
+                     </div>
+
+                     <form onSubmit={handleCreateCourse} className="space-y-3">
+                       <input
+                         type="text"
+                         required
+                         placeholder="Nhập tên khóa (VD: Khóa 1 - Hè Rực Rỡ 2026)"
+                         value={newCourseName}
+                         onChange={e => setNewCourseName(e.target.value)}
+                         className="w-full p-3 rounded-xl border border-slate-300 text-xs font-bold text-center focus:ring-2 focus:ring-green-600 outline-none text-slate-800 bg-slate-50"
+                       />
                        <button
-                          key={course.id}
-                          onClick={() => {
-                             setActiveCourse(course);
-                             setCurrentView('landing');
-                          }}
-                          className="bg-white rounded-2xl p-5 border-2 border-slate-200 hover:border-custom-primary shadow-sm hover:shadow-lg transition-all duration-300 text-left group active-scale flex flex-col justify-between min-h-[140px]"
+                         type="submit"
+                         className="w-full bg-custom-primary hover:bg-custom-primary-light text-white font-extrabold py-3 rounded-xl text-xs uppercase tracking-wider transition-all duration-300 active-scale shadow-md"
                        >
-                          <div>
-                            <div className="w-12 h-12 bg-emerald-50 text-custom-primary rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform border border-emerald-100">
-                               <Shield />
-                            </div>
-                            <h3 className="font-extrabold text-slate-800 text-base group-hover:text-custom-primary">{course.name}</h3>
-                          </div>
-                          <div className="flex items-center justify-between mt-4 border-t border-slate-100 pt-3">
-                             <span className="text-[10px] text-slate-400 font-medium">Nhấn để truy cập</span>
-                             <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-custom-primary group-hover:translate-x-1 transition-transform" />
-                          </div>
+                         Khởi Tạo Khóa Huấn Luyện Đầu Tiên
                        </button>
-                    ))}
-                 </div>
+                     </form>
+                   </div>
+                 )}
+
+                 {/* 0.3 TRƯỜNG HỢP HIỂN THỊ DANH SÁCH KHÓA HỌC THÔNG THƯỜNG */}
+                 {isFirebaseConfigured && courses.length > 0 && (
+                   <>
+                     <div className="text-center space-y-2">
+                        <h2 className="text-2xl md:text-3xl font-black text-custom-primary-dark">LỰA CHỌN KHÓA HUẤN LUYỆN</h2>
+                        <p className="text-slate-500 text-xs md:text-sm font-medium">Hệ thống lưu trữ độc lập theo từng khóa trên Cloud. Vui lòng chọn đúng khóa học của con em bạn.</p>
+                     </div>
+
+                     <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-5">
+                        {courses.map(course => (
+                           <button
+                              key={course.id}
+                              onClick={() => {
+                                 setActiveCourse(course);
+                                 setCurrentView('landing');
+                              }}
+                              className="bg-white rounded-2xl p-5 border-2 border-slate-200 hover:border-custom-primary shadow-sm hover:shadow-lg transition-all duration-300 text-left group active-scale flex flex-col justify-between min-h-[140px]"
+                           >
+                              <div>
+                                <div className="w-12 h-12 bg-emerald-50 text-custom-primary rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform border border-emerald-100">
+                                   <Shield />
+                                </div>
+                                <h3 className="font-extrabold text-slate-800 text-base group-hover:text-custom-primary">{course.name}</h3>
+                              </div>
+                              <div className="flex items-center justify-between mt-4 border-t border-slate-100 pt-3">
+                                 <span className="text-[10px] text-slate-400 font-medium">Nhấn để truy cập</span>
+                                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-custom-primary group-hover:translate-x-1 transition-transform" />
+                              </div>
+                           </button>
+                        ))}
+                     </div>
+                   </>
+                 )}
+
                </div>
             )}
 
@@ -1275,7 +1282,6 @@
                 {/* Banner oai nghiêm */}
                 <div className="relative overflow-hidden bg-gradient-to-br from-green-950 via-green-900 to-green-800 text-white rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-xl border border-green-700/80">
                   <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-yellow-400/5 rounded-full blur-3xl pointer-events-none"></div>
-                  <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-green-400/10 rounded-full blur-3xl pointer-events-none"></div>
                   
                   <div className="relative z-10 max-w-2xl space-y-3.5">
                     <span className="inline-flex bg-custom-accent text-green-950 font-black text-[9px] tracking-widest px-2.5 py-1.5 rounded-full uppercase shadow-md items-center gap-1">
@@ -1512,7 +1518,7 @@
                       
                       <div className="space-y-4 relative z-10">
                         <div className="flex justify-between items-center">
-                          <span className="bg-custom-accent text-green-950 text-[8px] md:text-[9px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider shadow">
+                          <span className="bg-custom-accent text-green-950 text-[8px] md:text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-wider shadow">
                             Chiến Sĩ Học Viên
                           </span>
                           <Shield />
@@ -3178,7 +3184,7 @@
     }
 
     // ============================================================================
-    // BỘ NẠP MODULE (KHÔNG CẦN CHỜ ĐỢI KẾT NỐI FIREBASE)
+    // BỘ NẠP MODULE CHÍNH
     // ============================================================================
     function AppLoader() {
       return <App />;
