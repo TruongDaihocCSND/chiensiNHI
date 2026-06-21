@@ -1034,7 +1034,15 @@
             showToast(`Đã cập nhật thông tin thành công!`);
             handleCancelEditStudent();
           } else {
-            const newId = `CS${Date.now()}`;
+            // Tìm số lớn nhất đang có
+const maxNumber = students.reduce((max, student) => {
+  const match = student.id.match(/^CS(\d+)$/);
+  if (!match) return max;
+  return Math.max(max, parseInt(match[1], 10));
+}, 0);
+
+// Sinh mã mới
+const newId = `CS${String(maxNumber + 1).padStart(3, '0')}`;
             const existingSibling = students.find(s => {
               const matchPhone = phoneInput && s.parentPhone && s.parentPhone === phoneInput;
               const matchEmail = emailInput && s.parentEmail && s.parentEmail.toLowerCase() === emailInput;
