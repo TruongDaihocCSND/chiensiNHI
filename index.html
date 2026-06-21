@@ -1035,14 +1035,14 @@
             handleCancelEditStudent();
           } else {
             // Tìm số lớn nhất đang có
-const maxNumber = students.reduce((max, student) => {
-  const match = student.id.match(/^CS(\d+)$/);
-  if (!match) return max;
-  return Math.max(max, parseInt(match[1], 10));
-}, 0);
+            const maxNumber = students.reduce((max, student) => {
+              const match = student.id.match(/^CS(\d+)$/);
+              if (!match) return max;
+              return Math.max(max, parseInt(match[1], 10));
+            }, 0);
 
-// Sinh mã mới
-const newId = `CS${String(maxNumber + 1).padStart(3, '0')}`;
+            // Sinh mã mới
+            const newId = `CS${String(maxNumber + 1).padStart(3, '0')}`;
             const existingSibling = students.find(s => {
               const matchPhone = phoneInput && s.parentPhone && s.parentPhone === phoneInput;
               const matchEmail = emailInput && s.parentEmail && s.parentEmail.toLowerCase() === emailInput;
@@ -1114,6 +1114,35 @@ const newId = `CS${String(maxNumber + 1).padStart(3, '0')}`;
         }
       };
 
+      // TÁC VỤ: XUẤT DANH SÁCH HỌC VIÊN RA FILE EXCEL (CSV)
+      const handleExportExcel = () => {
+        if (filteredStudents.length === 0) {
+          showToast('Không có dữ liệu học viên để tải xuống!', 'error');
+          return;
+        }
+
+        // Định nghĩa các cột hiển thị trong Excel
+        const headers = ['Mã Số', 'Tên Học Viên', 'Tiểu Đội', 'Số Điện Thoại', 'Mật Khẩu Phụ Huynh'];
+        
+        // Trích xuất và định dạng dữ liệu
+        const rows = filteredStudents.map(student => {
+          const squadStr = student.squad ? `Tiểu Đội ${student.squad}` : 'Chờ phân';
+          const phoneStr = student.parentPhone || '';
+          const passwordStr = student.parentPassword || createParentPasswordByLogic(student.parentPhone || '1234', student.id);
+          return [student.id, student.name, squadStr, phoneStr, passwordStr];
+        });
+
+        // Xử lý chuỗi CSV (Thêm BOM \uFEFF để Excel mở không bị lỗi font Tiếng Việt UTF-8)
+        const escapeCSV = (str) => `"${String(str).replace(/"/g, '""')}"`;
+        const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.map(escapeCSV).join(',')).join('\n');
+        
+        // Gọi thư viện FileSaver có sẵn để tải file
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const safeCourseName = activeCourse?.name ? activeCourse.name.replace(/[^a-z0-9]/gi, '_') : 'Khoa_Hoc';
+        window.saveAs(blob, `DanhSachHocVien_${safeCourseName}.csv`);
+        showToast('Đã tải xuống Excel danh sách học viên!');
+      };
+
       return (
         <div className="min-h-screen flex flex-col justify-between">
           
@@ -1132,7 +1161,7 @@ const newId = `CS${String(maxNumber + 1).padStart(3, '0')}`;
                 <Shield />
                 <div>
                   <h1 className="font-extrabold text-xs md:text-base tracking-wider uppercase leading-tight">
-                    Sổ Liên Lạc Điện Tử "Học Làm Chiến Sĩ Công An"
+                    Sổ Liên Lạc Điện Tử - Học Làm Chiến Sĩ Công An
                   </h1>
                   <span className="text-[8px] md:text-[10px] font-semibold tracking-widest text-custom-accent block uppercase mt-0.5">
                     {activeCourse ? activeCourse.name : 'Trường Đại Học Cảnh sát nhân dân'}
@@ -2477,9 +2506,20 @@ const newId = `CS${String(maxNumber + 1).padStart(3, '0')}`;
                   {/* DANH SÁCH HỌC VIÊN CỦA KHÓA HỌC */}
                   <div className="lg:col-span-8">
                     <div className="bg-white rounded-2xl shadow p-4 md:p-5 border border-slate-100 space-y-4">
-                      <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                        <h3 className="text-xs font-black text-slate-700 tracking-wider uppercase">Danh Sách Học Viên Khóa Này</h3>
-                        <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">Phân chia tiểu đội nhanh tại bảng</span>
+                      <div className="flex justify-between items-center border-b border-slate-100 pb-2 flex-wrap gap-2">
+                        <div>
+                          <h3 className="text-xs font-black text-slate-700 tracking-wider uppercase">Danh Sách Học Viên Khóa Này</h3>
+                          <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">Phân chia tiểu đội nhanh tại bảng</span>
+                        </div>
+                        
+                        <button
+                          type="button"
+                          onClick={handleExportExcel}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] md:text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm active-scale"
+                        >
+                          <DownloadIcon className="w-4 h-4" />
+                          <span>Xuất Excel</span>
+                        </button>
                       </div>
 
                       {/* Thanh tìm kiếm & bộ lọc Tiểu Đội */}
