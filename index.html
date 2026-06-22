@@ -1132,14 +1132,30 @@
           return [student.id, student.name, squadStr, phoneStr, passwordStr];
         });
 
-        // Xử lý chuỗi CSV (Thêm BOM \uFEFF để Excel mở không bị lỗi font Tiếng Việt UTF-8)
-        const escapeCSV = (str) => `"${String(str).replace(/"/g, '""')}"`;
-        const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.map(escapeCSV).join(',')).join('\n');
+        // Tạo nội dung HTML bảng để ép Excel mở chuẩn cột, chuẩn font Tiếng Việt và giữ nguyên số 0 ở SĐT
+        let tableHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+        tableHtml += '<head><meta charset="utf-8"></head><body><table border="1"><thead>';
+        tableHtml += '<tr style="background-color: #1b5e20; color: #ffffff; font-weight: bold; height: 35px;">';
+        headers.forEach(h => { tableHtml += `<th>${h}</th>`; });
+        tableHtml += '</tr></thead><tbody>';
         
-        // Gọi thư viện FileSaver có sẵn để tải file
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        rows.forEach(row => {
+          tableHtml += '<tr>';
+          row.forEach((cell, index) => {
+            // index 0 (Mã Số), index 3 (Số Điện Thoại), index 4 (Mật khẩu) -> Ép định dạng Text (mso-number-format) để không mất số 0
+            const isTextColumn = (index === 0 || index === 3 || index === 4);
+            const style = isTextColumn ? "mso-number-format:'\\@';" : "";
+            tableHtml += `<td style="${style}">${cell}</td>`;
+          });
+          tableHtml += '</tr>';
+        });
+        
+        tableHtml += '</tbody></table></body></html>';
+        
+        // Gọi thư viện FileSaver để tải file định dạng .xls
+        const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel' });
         const safeCourseName = activeCourse?.name ? activeCourse.name.replace(/[^a-z0-9]/gi, '_') : 'Khoa_Hoc';
-        window.saveAs(blob, `DanhSachHocVien_${safeCourseName}.csv`);
+        window.saveAs(blob, `DanhSachHocVien_${safeCourseName}.xls`);
         showToast('Đã tải xuống Excel danh sách học viên!');
       };
 
